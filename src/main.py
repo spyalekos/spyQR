@@ -692,7 +692,7 @@ def main(page: ft.Page):
             scroll=ft.ScrollMode.AUTO,
             spacing=10,
         ),
-        padding=14 if is_android else 20,
+        padding=ft.Padding.only(left=14, top=14, right=14, bottom=56) if is_android else 20,
     )
 
     # ---------------------------------------------------------
@@ -886,7 +886,7 @@ def main(page: ft.Page):
             scroll=ft.ScrollMode.AUTO,
             spacing=12,
         ),
-        padding=14 if is_android else 20,
+        padding=ft.Padding.only(left=14, top=14, right=14, bottom=56) if is_android else 20,
     )
 
     def update_result_tab(parsed: Dict[str, Any]):
@@ -1580,7 +1580,7 @@ def main(page: ft.Page):
             scroll=ft.ScrollMode.AUTO,
             spacing=10,
         ),
-        padding=14 if is_android else 20,
+        padding=ft.Padding.only(left=14, top=14, right=14, bottom=56) if is_android else 20,
     )
 
     # ---------------------------------------------------------
@@ -1807,7 +1807,7 @@ def main(page: ft.Page):
             scroll=ft.ScrollMode.AUTO,
             spacing=10,
         ),
-        padding=14 if is_android else 20,
+        padding=ft.Padding.only(left=14, top=14, right=14, bottom=56) if is_android else 20,
     )
 
     # ---------------------------------------------------------
@@ -2159,7 +2159,7 @@ def main(page: ft.Page):
             scroll=ft.ScrollMode.AUTO,
             spacing=12,
         ),
-        padding=14 if is_android else 20,
+        padding=ft.Padding.only(left=14, top=14, right=14, bottom=56) if is_android else 20,
     )
 
     # ---------------------------------------------------------
@@ -2369,7 +2369,7 @@ def main(page: ft.Page):
             scroll=ft.ScrollMode.AUTO,
             spacing=10,
         ),
-        padding=14 if is_android else 20,
+        padding=ft.Padding.only(left=14, top=14, right=14, bottom=56) if is_android else 20,
     )
 
     # ---------------------------------------------------------
@@ -2585,7 +2585,17 @@ def main(page: ft.Page):
 
     # Early rendering
     page.appbar = app_bar
-    page.add(tabs)
+    if is_android:
+        page.add(
+            ft.SafeArea(
+                content=tabs,
+                avoid_intrusions_bottom=True,
+                maintain_bottom_view_padding=True,
+                expand=True,
+            )
+        )
+    else:
+        page.add(tabs)
     refresh_history_tab()
     refresh_analytics_tab()
     page.update()
