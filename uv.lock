@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -828,70 +828,70 @@ wheels = [
 
 [[package]]
 name = "spyqr"
-version = "0.2.2"
+version = "0.2.4"
 source = { virtual = "." }
 dependencies = [
     { name = "flet" },
     { name = "flet-audio" },
-    { name = "flet-camera" },
     { name = "flet-charts" },
     { name = "flet-code-editor" },
     { name = "flet-color-pickers" },
     { name = "flet-datatable2" },
-    { name = "flet-desktop" },
     { name = "flet-flashlight" },
     { name = "flet-geolocator" },
-    { name = "flet-lottie" },
     { name = "flet-map" },
     { name = "flet-permission-handler" },
     { name = "flet-secure-storage" },
     { name = "flet-spinkit" },
     { name = "flet-webview" },
-    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "opencv-python" },
     { name = "pillow" },
     { name = "python-barcode" },
     { name = "qrcode", extra = ["pil"] },
-    { name = "zxing-cpp" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "flet-camera" },
+    { name = "flet-desktop" },
+    { name = "flet-lottie" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "opencv-python" },
     { name = "pyinstaller" },
     { name = "watchdog" },
+    { name = "zxing-cpp" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "flet", specifier = ">=1.0.4" },
     { name = "flet-audio", specifier = ">=1.0.4" },
-    { name = "flet-camera", specifier = ">=1.0.4" },
     { name = "flet-charts", specifier = ">=1.0.4" },
     { name = "flet-code-editor", specifier = ">=1.0.4" },
     { name = "flet-color-pickers", specifier = ">=1.0.4" },
     { name = "flet-datatable2", specifier = ">=1.0.4" },
-    { name = "flet-desktop", specifier = ">=1.0.4" },
     { name = "flet-flashlight", specifier = ">=1.0.4" },
     { name = "flet-geolocator", specifier = ">=1.0.4" },
-    { name = "flet-lottie", specifier = ">=1.0.4" },
     { name = "flet-map", specifier = ">=1.0.4" },
     { name = "flet-permission-handler", specifier = ">=1.0.4" },
     { name = "flet-secure-storage", specifier = ">=1.0.4" },
     { name = "flet-spinkit", specifier = ">=1.0.4" },
     { name = "flet-webview", specifier = ">=1.0.4" },
-    { name = "numpy", specifier = ">=2.0" },
-    { name = "opencv-python", specifier = ">=4.10.0" },
     { name = "pillow", specifier = ">=11.0" },
     { name = "python-barcode", specifier = ">=0.16.1" },
     { name = "qrcode", extras = ["pil"], specifier = ">=8.0" },
-    { name = "zxing-cpp", specifier = ">=3.1.1" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "flet-camera", specifier = ">=1.0.4" },
+    { name = "flet-desktop", specifier = ">=1.0.4" },
+    { name = "flet-lottie", specifier = ">=1.0.4" },
+    { name = "numpy", specifier = ">=2.0" },
+    { name = "opencv-python", specifier = ">=4.10.0" },
     { name = "pyinstaller", specifier = ">=6.22.3" },
     { name = "watchdog", specifier = ">=6.0.0" },
+    { name = "zxing-cpp", specifier = ">=3.1.1" },
 ]
 
 [[package]]

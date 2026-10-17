@@ -102,7 +102,14 @@ trigger: always
 
 ## 📍 Τελευταία Γνωστή Κατάσταση (Last Known State)
 
-### 🚀 ΤΡΕΧΟΥΣΑ ΕΚΔΟΣΗ: v0.2.2
+### 🚀 ΤΡΕΧΟΥΣΑ ΕΚΔΟΣΗ: v0.2.4
+- Βελτιστοποίηση **Οικονομίας Μνήμης (Ultra-Low-RAM APK Build)** στο `build_apk.sh` και στο `pyproject.toml` (`[tool.flet.android.gradle_properties]`):
+  - Μεταφορά του Android staging εκτός workspace (`/tmp/spyqr_android_stage`, κατά το πρότυπο του `NoteSpy`) και τερματισμός του `dart language-server --protocol lsp` ώστε να εξοικονομείται `1.3 GB RAM`.
+  - Αντικατάσταση του default `-Xmx8G` του Flet 1.0.4 με `-Xmx768m -Xms128m -XX:MaxMetaspaceSize=256m -XX:ReservedCodeCacheSize=64m -XX:+UseSerialGC` και διαχωρισμός του build σε 4 σειριακές φάσεις (Python stage -> Native ZXing patch -> standalone `flutter assemble` -> `./gradlew assembleRelease -x compileFlutterBuildRelease -x lintVitalRelease`) ώστε το `gen_snapshot` και το Gradle JVM να μην τρέχουν ποτέ ταυτόχρονα στη μνήμη.
+- Προσθήκη πλήρους εγγενούς υποστήριξης **Android** (`gr.spyalekos.spyqr`) με διατήρηση **100% της λειτουργικότητας στα Windows Desktop**:
+  - Ενσωμάτωση native σαρωτή **ZXing Android Embedded (`MainActivity.kt`)** μέσω custom URI scheme (`spyqr://scan/start` για κάμερα 1D/2D και `spyqr://scan/file?path=...` για αποκωδικοποίηση εικόνας) και IPC αρχείου `.spyqr_scan_result.json`, ενώ στα Windows διατηρείται αυτούσιος ο ζωντανός OpenCV DirectShow σαρωτής και οι μηχανές αποκωδικοποίησης `zxing-cpp` / `cv2`.
+  - Διαχωρισμός των desktop-only πακέτων (`flet-desktop`, `flet-camera`, `flet-lottie`, `opencv-python`, `numpy`, `zxing-cpp`) στο `[dependency-groups] dev` του `pyproject.toml` ώστε το `flet build apk` να πακετάρει καθαρά pure-Python + Android wheels ενώ το `uv run` / `uv sync` στα Windows τα εγκαθιστά αυτόματα.
+  - Προσαρμογή αποθήκευσης PNG & CSV (`src_bytes` στο `FilePicker.save_file`), εξωτερικών συνδέσμων (`ft.UrlLauncher` σε Android / `webbrowser.open` σε Windows), φακέλου ιστορικού (`FLET_APP_STORAGE_DATA`) και responsive διατάξεων για οθόνες κινητών.
 - Πλήρης συγχρονισμός όλων των κανόνων από τα υπόλοιπα projects του `pyAlekos` ([`.agents/rules/readme.md`](file:///c:/Users/alekos/pyAlekos/spyQR/.agents/rules/readme.md), [`.agents/GEMINI.md`](file:///c:/Users/alekos/pyAlekos/spyQR/.agents/GEMINI.md), [`.agents/flet.md`](file:///c:/Users/alekos/pyAlekos/spyQR/.agents/flet.md)) και αναμόρφωση του [`README.md`](file:///c:/Users/alekos/pyAlekos/spyQR/README.md) στα Ελληνικά (χωρίς αριθμούς εκδόσεων, εντολές εκτέλεσης, δομή project ή links δημιουργού).
 - Δημιουργία νέου καθαρού (χωρίς καθόλου κείμενο) Splash Screen (`assets/spyqr_splash.jpg`), μεταγλώττιση standalone εκτελέσιμου `dist/SpyQR.exe`, και δημοσίευση σε public GitHub repository (`spyalekos/SpyQR`) μαζί με το GitHub Release `v0.2.2`.
 - Μεταφορά του **Διαδραστικού Χάρτη (`flet-map`)** από την καρτέλα «Αποτέλεσμα» στο κάτω μέρος της καρτέλας **«Δημιουργός»** ως **Click-on-Map Location QR Picker**: με κλικ οπουδήποτε πάνω στον χάρτη (ή επιλογή από τα κουμπιά γρήγορης μετάβασης πόλεων), μετακινείται η πινέζα και δημιουργείται αυτόματα QR Code τοποθεσίας GPS (`geo:lat,lon`).

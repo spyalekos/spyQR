@@ -49,16 +49,20 @@
 - **Silent Subprocesses on Windows**: When invoking external CLI tools via `subprocess`, pass `creationflags=subprocess.CREATE_NO_WINDOW` on Windows to prevent console window flashes.
 
 ## 5. Current Project State & Session Handoff
-- **Current Version**: `0.2.2` (synchronized in `src/version.py`, `pyproject.toml`, `.agents/instructions.md`, `.agents/rules/instructions.md`).
-- **Next Version on Code Change**: `0.2.3`.
+- **Current Version**: `0.2.4` (synchronized in `src/version.py`, `pyproject.toml`, `.agents/instructions.md`, `.agents/rules/instructions.md`).
+- **Next Version on Code Change**: `0.2.5`.
 - **GitHub Repository**: Public repository [`spyalekos/spyQR`](https://github.com/spyalekos/spyQR) (`origin/master` fully synced).
 - **Published GitHub Release**: [`v0.2.2`](https://github.com/spyalekos/spyQR/releases/tag/v0.2.2) with standalone executable `dist/SpyQR.exe` uploaded and Greek Release Notes.
-- **Splash Screen & Icon**: Clean text-free 3D holographic QR/Barcode graphic at `assets/spyqr_splash.jpg` (`600x340`) and app icon at `assets/icon.ico`.
-- **Application Architecture**:
-  - **Tab 1 ("Σαρωτής")**: Live OpenCV DirectShow camera stream (`camera_async_worker` + `ProgressRing` ticker + `force_window_repaint`), image file picker, clipboard image scanner, audio beep feedback, and Quick Action Bolt button (`ft.Icons.BOLT`) next to "Προβολή & Επεξεργασία".
+- **Splash Screen & Icon**: Clean text-free 3D holographic QR/Barcode graphic at `assets/spyqr_splash.jpg` (`600x340`) and app icon at `assets/icon.ico` / `assets/icon.png`.
+- **Low-Memory Android APK Build (`build_apk.sh`)**:
+  - Stages the Flutter/Android project in `/tmp/spyqr_android_stage` (outside the IDE workspace so `dart language-server --protocol lsp` never spawns and saves 1.3 GB RAM).
+  - Overrides Flet 1.0.4's default `-Xmx8G` via `[tool.flet.android.gradle_properties]` with `-Xmx768m -Xms128m -XX:MaxMetaspaceSize=256m -XX:ReservedCodeCacheSize=64m -XX:+UseSerialGC`.
+  - Runs 4 decoupled sequential phases (`prepare_flet_stage` -> `patch_android_scanner` -> standalone `flutter assemble` -> `./gradlew assembleRelease -x compileFlutterBuildRelease -x lintVitalRelease`) so Dart `gen_snapshot` and Gradle JVM never run simultaneously in RAM.
+- **Application Architecture (Dual Windows Desktop & Android Native Support)**:
+  - **Tab 1 ("Σαρωτής")**: Live OpenCV DirectShow camera stream (`camera_async_worker` + `ProgressRing` ticker + `force_window_repaint`) on Windows Desktop and Native ZXing 1D/2D camera & image scanner (`spyqr://scan/start` & `spyqr://scan/file` via `MainActivity.kt` + `.spyqr_scan_result.json` IPC) on Android, image file picker, clipboard image/text scanner, audio beep feedback, and Quick Action Bolt button (`ft.Icons.BOLT`) next to "Προβολή & Επεξεργασία".
   - **Tab 2 ("Αποτέλεσμα")**: Smart Semantic Detection badge & structured details (Retail products with GS1 country & live OpenFoodFacts lookup + Skroutz/Google buttons, Books via OpenLibrary, Magazines, Gov.gr/AADE, Wi-Fi, vCard, vEvent, SEPA/IBAN, Crypto, GPS, SMS, Email, Tel, JSON) + syntax-highlighted `CodeEditor`.
-  - **Tab 3 ("Δημιουργός")**: QR & 1D Barcode generator (`QR`, `CODE128`, `EAN13`, `EAN8`, `UPCA`, `CODE39`), interactive RGB sliders (`0-255`), HEX input, preset color swatches, HSV `ColorPicker` (`on_color_change` with 8-char `#AARRGGBB` normalization), box size/border sliders, ECC selector, PNG export, and **Click-on-Map Geo QR Picker** (`flet_map.Map` with `on_tap` & Greek city presets) at the bottom.
-  - **Tab 4 ("Ιστορικό")**: Encrypted persistent scan history (`SecureStorage` + local fallback), `DataTable2` with search filter, 1-click reload/copy/delete, and UTF-8 CSV export.
+  - **Tab 3 ("Δημιουργός")**: QR & 1D Barcode generator (`QR`, `CODE128`, `EAN13`, `EAN8`, `UPCA`, `CODE39`), interactive RGB sliders (`0-255`), HEX input, preset color swatches, HSV `ColorPicker` (`on_color_change` with 8-char `#AARRGGBB` normalization), box size/border sliders, ECC selector, PNG export (`src_bytes` SAF support on Android + disk write on Desktop), and **Click-on-Map Geo QR Picker** (`flet_map.Map` with `on_tap` & Greek city presets) at the bottom.
+  - **Tab 4 ("Ιστορικό")**: Encrypted persistent scan history (`SecureStorage` + local fallback), `DataTable2` with search filter, 1-click reload/copy/delete, and UTF-8 CSV export (`src_bytes` SAF support on Android + disk write on Desktop).
   - **Tab 5 ("Στατιστικά")**: Vertical analytics layout with large `PieChart` (percentages & legend) on top, `BarChart` histogram below, and 3 summary cards.
   - **Tab 6 ("Βοήθεια")**: Comprehensive Greek user guide and creator references (**SpyAlekos** — `https://alekos.program.gr` & `https://github.com/spyalekos`).
   - **AppBar**: Creator link, audio toggle, and full recursive Dark ↔ Light UI color inversion (`invert_control_tree`) via the lightbulb button.
