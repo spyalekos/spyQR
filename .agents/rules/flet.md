@@ -159,4 +159,28 @@ trigger: always
                page.update()
            ```
            ώστε το λειτουργικό σύστημα να στείλει ακαριαίο μήνυμα redraw στο Flutter χωρίς να χρειάζεται αλλαγή παραθύρου.
+*   **`flet_color_pickers.ColorPicker`: Μη λειτουργία `on_change` και 8-ψήφιο ARGB hex (`#AARRGGBB`)**:
+    *   **Πρόβλημα:**
+        1. Στο `flet-color-pickers` (`v1.0.4`), το event αλλαγής χρώματος ονομάζεται **`on_color_change`** (ΟΧΙ `on_change`). Αν οριστεί `color_picker.on_change = ...`, ο handler δεν καλείται ποτέ.
+        2. Επιπλέον, το Flutter `ColorPicker` επιστρέφει στο `e.data` 8-ψήφιο δεκαεξαδικό χρώμα μορφής **`#AARRGGBB`** (Alpha-Red-Green-Blue, π.χ. `#ffff0000` για κόκκινο), ενώ η βιβλιοθήκη `PIL.ImageColor` (που χρησιμοποιούν τα `qrcode` και `python-barcode`) ερμηνεύει τα 8-ψήφια hex ως `#RRGGBBAA` (Red-Green-Blue-Alpha), αλλοιώνοντας εντελώς τα κανάλια RGB!
+    *   **Λύση:**
+        1. Χρησιμοποιούμε `color_picker.on_color_change = handler` και `enable_alpha=False`.
+        2. Κανονικοποιούμε πάντα το χρώμα αφαιρώντας τα 2 πρώτα ψηφία Alpha όταν το μήκος είναι 8 (`if len(c) == 8: c = c[2:]` -> `#RRGGBB`) και επιστρέφουμε raw `PNG bytes` στο `ft.Image.src`.
+        3. Παρέχουμε παράλληλα άμεσα `ft.Slider` για τα κανάλια **R, G, B (0-255)**, πεδίο HEX και έτοιμα swatches χρωμάτων σε αμφίδρομο συγχρονισμό.
+*   **`TypeError: ExpansionTile.__init__() got an unexpected keyword argument 'initially_expanded'`**:
+    *   **Πρόβλημα:** Στο Flet v1.0+, η παράμετρος `initially_expanded` του `ft.ExpansionTile` καταργήθηκε.
+    *   **Λύση:** Χρησιμοποιούμε την παράμετρο **`expanded=False`** (ή `expanded=True`).
 
+## 7. 🖥️ ΑΠΟΚΛΕΙΣΤΙΚΗ ΕΚΤΕΛΕΣΗ DESKTOP (DESKTOP-ONLY RUNTIME)
+
+*   **Όχι ιστοσελίδες / Όχι Web Browser**: Η εφαρμογή Flet αναπτύσσεται και εκτελείται **αποκλειστικά ως ανεξάρτητη desktop εφαρμογή**.
+*   **Απαγόρευση Browser**: Απαγορεύεται αυστηρά η χρήση του `view=ft.AppView.WEB_BROWSER` ή η εκτέλεση σε browser, εκτός και αν ζητηθεί ρητά και γραπτά από τον χρήστη.
+*   **Default View**: Εκκινούμε πάντα την εφαρμογή ως native desktop παράθυρο χρησιμοποιώντας `ft.run(main)`.
+
+## 8. ⬛ ΑΠΟΦΥΓΗ ΓΚΡΙ ΟΘΟΝΗΣ & ΠΑΓΩΜΑΤΟΣ (GRAY SCREEN & FREEZE PREVENTION)
+
+*   **Layout — Χρήση `expand=True` στο Root**: Το `page.add()` δέχεται πάντα ένα root control με `expand=True`.
+*   **Απαγόρευση `expand=True` μέσα σε Scrollable Views**: Σε scrollable views (`ScrollMode.AUTO`), ΑΠΑΓΟΡΕΥΕΤΑΙ η χρήση `expand=True` σε εσωτερικά `Column` ή `Container` (προκαλεί collapse σε γκρι πλαίσιο). Χρησιμοποιούμε πάντα σταθερά πλάτη/ύψη (`width=...`, `height=...`).
+*   **Απαγόρευση `ft.VerticalDivider` χωρίς ρητό ύψος**: Μέσα σε `ft.Row` χωρίς καθορισμένο ύψος προκαλεί circular constraint violation στο Flutter.
+*   **Συγχρονισμένο UI Busy Lock**: Κατά την εκτέλεση βαριών εργασιών, απενεργοποιούμε προσωρινά τα κουμπιά και επαναφέρουμε πάντα σε μπλοκ `finally:`.
+*   **PyInstaller Binary Deduplication**: Στο `.spec` αρχείο φιλτράρουμε τα διπλότυπα root-level DLLs που υπάρχουν ήδη μέσα στο `flet_desktop\app\flet\` και εξαιρούμε τα `flet.testing`, `tkinter`, `unittest`, `pydoc`.

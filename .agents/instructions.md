@@ -56,32 +56,49 @@
    - **CRITICAL (Καταγραφή Σφαλμάτων):** Κάθε νέο σφάλμα, ιδιαιτερότητα του Flet API ή Gotcha που επιλύεται κατά την ανάπτυξη, **ΠΡΕΠΕΙ ΥΠΟΧΡΕΩΤΙΚΑ** να καταγράφεται στο αρχείο [`.agents/flet.md`](file:///c:/Users/alekos/pyAlekos/spyQR/.agents/flet.md) στην «Ενότητα 6: 🐛 ΕΠΙΛΥΜΕΝΑ ΣΦΑΛΜΑΤΑ & GOTCHAS» για μελλοντική αναφορά.
 
 5. **Εκδόσεις (Versioning):**
-   - **CRITICAL:** Όταν αλλάζουμε ακόμη και ένα byte στον κώδικα, δημιουργούμε νέα έκδοση (version bump).
-   - Χρησιμοποιούμε **δεκαδικό σύστημα με rollover** (π.χ. 0.1.0 -> 0.1.1 ... 0.1.9 -> 0.2.0, και 0.9.9 -> 1.0.0).
-   - Ενημερώνονται **ΟΛΕΣ** οι αναφορές συγχρονισμένα: `pyproject.toml`, `src/version.py` (Στο `README.md` **ΑΠΑΓΟΡΕΥΕΤΑΙ** η αναγραφή αριθμού έκδοσης, εντολών εκτέλεσης/build, δομής project ή links δημιουργού, σύμφωνα με το `.agents/rules/readme.md`).
+   - **CRITICAL:** Όταν αλλάζουμε ακόμη και ένα byte στον κώδικα, δημιουργούμε νέα έκδοση (version bump) αυστηρά κατά `+0.0.1`.
+   - Χρησιμοποιούμε **δεκαδικό σύστημα με rollover** (π.χ. 0.1.0 -> 0.1.1 ... 0.1.9 -> 0.2.0, και 0.9.9 -> 1.0.0, ΠΟΤΕ `.10`).
+   - Ενημερώνονται **ΟΛΕΣ** οι αναφορές συγχρονισμένα: `pyproject.toml`, `src/version.py`, `.agents/instructions.md`, `.agents/rules/instructions.md`.
+   - **ΑΠΑΓΟΡΕΥΣΗ ΣΤΟ `README.md`:** Στο `README.md` **ΔΕΝ** γράφουμε ποτέ αριθμό έκδοσης, εντολές εκτέλεσης/μεταγλώττισης, δομή φακέλων ή links δημιουργού (βλ. Κανόνα 9 & [`.agents/rules/readme.md`](file:///c:/Users/alekos/pyAlekos/spyQR/.agents/rules/readme.md)).
 
-6. **Black Screen & Red Error Prevention (CRITICAL):**
-   - Η «μαύρη οθόνη» ή το «κόκκινο πλαίσιο Flutter error» αποφεύγεται με structured try-except blocks στην `main`.
+6. **Black Screen, Gray Screen & Red Error Prevention (CRITICAL):**
+   - Η «μαύρη οθόνη», η «γκρι οθόνη» ή το «κόκκινο πλαίσιο Flutter error» αποφεύγεται με structured try-except blocks στην `main`.
    - **UI Early Rendering:** Καλούμε `page.add()` με βασικό layout αμέσως, και φορτώνουμε ασύγχρονα τις κάμερες ή τα βαριά components.
+   - **Αποφυγή Γκρι Οθόνης (Scrollable Views):** Σε scrollable views (`ScrollMode.AUTO`), αποφεύγουμε το `expand=True` σε εσωτερικά `Column`/`Container` και χρησιμοποιούμε ρητά πλάτη/ύψη.
    - **Desktop Safe Fallbacks:** Σε Windows Desktop, εάν ένα hardware plugin δεν διαθέτει Flutter engine support, η εφαρμογή διατηρεί αυτόματο graceful fallback (π.χ. OpenCV live camera feed με Flet Image stream), διασφαλίζοντας 100% λειτουργικότητα χωρίς crash.
    - **Live UI Repaint (Windows Desktop):** Απαγορεύεται η ενημέρωση του UI από `threading.Thread`. Χρησιμοποιούμε πάντα `page.run_task(async_worker)` + `await asyncio.to_thread(...)` + ενεργό `ft.ProgressRing` ticker + `1px` window resize nudge (`force_window_repaint()`), και αρχικοποιούμε τα `ft.Image` με έγκυρα 1x1 PNG bytes.
-   - **Cross-Project Knowledge Lookup (`~\pyAlekos`):** Αν παρουσιαστεί πρόβλημα ενημέρωσης οθόνης ή ιδιαιτερότητα του Flet που δεν καλύπτεται από το τοπικό `.agents/`, ο agent πρέπει να αναζητά λύσεις σε όλα τα `.agents/*.md` αρχεία του φακέλου `c:\Users\alekos\pyAlekos`.
+   - **Cross-Project Knowledge Lookup (`~\pyAlekos`):** Κάθε γενικός κανόνας ή οδηγία που υπάρχει στα υπόλοιπα projects του φακέλου `c:\Users\alekos\pyAlekos` (όπως `readme.md`, `flet.md`, `GEMINI.md`, `instructions.md`) ενσωματώνεται και ισχύει αυτόματα και σε αυτό το project.
    - **Automated UI Verification Guard:** Όταν ο agent τρέχει αυτοματοποιημένο έλεγχο UI (π.χ. για screenshots), πρέπει ΠΑΝΤΑ να κλείνει το παράθυρο σε `finally: await page.window.close()` ώστε να μην κολλάει ποτέ η διεργασία στο παρασκήνιο.
 
-7. **Naming Convention:**
+7. **Naming Convention & Ανοχή σε Μικρά/Κεφαλαία:**
    - Το όνομα της εφαρμογής ξεκινά με κεφαλαίο: **`SpyQR`**.
+   - Όταν ο χρήστης αναφέρει αρχείο, εντολή, φάκελο ή σύμβολο με διαφορετικά μικρά/κεφαλαία, ο AI agent ψάχνει πρώτα case-insensitive αντιστοιχίες μέσα στο project.
 
-8. **Συντομεύσεις & Αλληλεπίδραση (Interaction Shortcuts):**
-   - **Η Συντόμευση `^` (Hands-off / Shutdown)**:
-     - Το σύμβολο `^` ως αυτόνομο μήνυμα χρήστη σημαίνει **hands-off / κλείνουμε για σήμερα**.
-     - Μόλις ο χρήστης γράψει `^`, ο AI agent **ΠΡΕΠΕΙ** να τερματίσει/κλείσει αμέσως οποιαδήποτε ενεργή background διεργασία (όπως `uv run flet run`) για να ελευθερωθούν πόροι συστήματος.
-     - Ο AI agent ολοκληρώνει τη συνομιλία αποχαιρετώντας ευγενικά τον χρήστη, χωρίς να εκτελέσει νέες ενέργειες, εντολές ή να περιμένει περαιτέρω είσοδο.
+8. **PyInstaller & Native Splash Screen (Desktop Build):**
+   - Όταν ζητηθεί build από τον χρήστη, εκτελούμε πάντα με `--clean`: `uv run pyinstaller --clean --noconfirm SpyQR.spec`.
+   - Στο `SpyQR.spec` η παράμετρος `console` είναι πάντα `False`, εφαρμόζεται φίλτρο deduplication για τα binaries του `flet_desktop`, και το `Splash('assets/spyqr_splash.jpg')` χρησιμοποιεί καθαρή εικόνα **χωρίς καθόλου κείμενο**.
+
+9. **Κανόνες Δομής & Περιεχομένου `README.md` & `Release Notes` (`.agents/rules/readme.md`):**
+   - **ΠΑΝΤΑ ΣΤΑ ΕΛΛΗΝΙΚΑ:** Τόσο το `README.md` όσο και τα `Release Notes` στο GitHub γράφονται αποκλειστικά στα **Ελληνικά**.
+   - **ΑΥΣΤΗΡΕΣ ΑΠΑΓΟΡΕΥΣΕΙΣ ΣΤΟ `README.md`:**
+     1. **ΟΧΙ** εντολές εκτέλεσης ή μεταγλώττισης (`uv run ...`, `python ...`, `pyinstaller ...`).
+     2. **ΟΧΙ** δομή φακέλων/αρχείων του project (`├── src/`).
+     3. **ΟΧΙ** links ή ενότητα δημιουργού (Creator links / portfolio URLs) στο `README.md` ή στα Release Notes.
+     4. **ΟΧΙ** αριθμοί εκδόσεων, version tags (π.χ. `(v0.2.2)`) ή σχόλια εκδόσεων στον τίτλο ή στα bullets του `README.md`.
+     5. **ΟΧΙ** διαγραφή υπαρχόντων χαρακτηριστικών κατά τις ενημερώσεις.
+
+10. **Συντομεύσεις & Αλληλεπίδραση (Interaction Shortcuts):**
+    - **Η Συντόμευση `^` (Hands-off / Shutdown)**:
+      - Το σύμβολο `^` ως αυτόνομο μήνυμα χρήστη σημαίνει **hands-off / κλείνουμε για σήμερα**.
+      - Μόλις ο χρήστης γράψει `^`, ο AI agent **ΠΡΕΠΕΙ** να τερματίσει/κλείσει αμέσως οποιαδήποτε ενεργή background διεργασία (όπως `uv run flet run`) για να ελευθερωθούν πόροι συστήματος.
+      - Ο AI agent ολοκληρώνει τη συνομιλία αποχαιρετώντας ευγενικά τον χρήστη, χωρίς να εκτελέσει νέες ενέργειες, εντολές ή να περιμένει περαιτέρω είσοδο.
 
 ---
 
 ## 📍 Τελευταία Γνωστή Κατάσταση (Last Known State)
 
 ### 🚀 ΤΡΕΧΟΥΣΑ ΕΚΔΟΣΗ: v0.2.2
+- Πλήρης συγχρονισμός όλων των κανόνων από τα υπόλοιπα projects του `pyAlekos` ([`.agents/rules/readme.md`](file:///c:/Users/alekos/pyAlekos/spyQR/.agents/rules/readme.md), [`.agents/GEMINI.md`](file:///c:/Users/alekos/pyAlekos/spyQR/.agents/GEMINI.md), [`.agents/flet.md`](file:///c:/Users/alekos/pyAlekos/spyQR/.agents/flet.md)) και αναμόρφωση του [`README.md`](file:///c:/Users/alekos/pyAlekos/spyQR/README.md) στα Ελληνικά (χωρίς αριθμούς εκδόσεων, εντολές εκτέλεσης, δομή project ή links δημιουργού).
 - Δημιουργία νέου καθαρού (χωρίς καθόλου κείμενο) Splash Screen (`assets/spyqr_splash.jpg`), μεταγλώττιση standalone εκτελέσιμου `dist/SpyQR.exe`, και δημοσίευση σε public GitHub repository (`spyalekos/SpyQR`) μαζί με το GitHub Release `v0.2.2`.
 - Μεταφορά του **Διαδραστικού Χάρτη (`flet-map`)** από την καρτέλα «Αποτέλεσμα» στο κάτω μέρος της καρτέλας **«Δημιουργός»** ως **Click-on-Map Location QR Picker**: με κλικ οπουδήποτε πάνω στον χάρτη (ή επιλογή από τα κουμπιά γρήγορης μετάβασης πόλεων), μετακινείται η πινέζα και δημιουργείται αυτόματα QR Code τοποθεσίας GPS (`geo:lat,lon`).
 - Προσθήκη ενεργού συνδέσμου και αναφοράς στον δημιουργό **[SpyAlekos](https://alekos.program.gr)** (καθώς και GitHub `https://github.com/spyalekos`) στην πάνω μπάρα της εφαρμογής (`AppBar`), στο υποσέλιδο της καρτέλας «Βοήθεια» και στο `README.md`.

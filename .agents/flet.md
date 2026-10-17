@@ -166,5 +166,16 @@
     *   **Πρόβλημα:** Στο Flet v1.0+, η παράμετρος `initially_expanded` του `ft.ExpansionTile` καταργήθηκε.
     *   **Λύση:** Χρησιμοποιούμε την παράμετρο **`expanded=False`** (ή `expanded=True`).
 
+## 7. 🖥️ ΑΠΟΚΛΕΙΣΤΙΚΗ ΕΚΤΕΛΕΣΗ DESKTOP (DESKTOP-ONLY RUNTIME)
 
+*   **Όχι ιστοσελίδες / Όχι Web Browser**: Η εφαρμογή Flet αναπτύσσεται και εκτελείται **αποκλειστικά ως ανεξάρτητη desktop εφαρμογή**.
+*   **Απαγόρευση Browser**: Απαγορεύεται αυστηρά η χρήση του `view=ft.AppView.WEB_BROWSER` ή η εκτέλεση σε browser, εκτός και αν ζητηθεί ρητά και γραπτά από τον χρήστη.
+*   **Default View**: Εκκινούμε πάντα την εφαρμογή ως native desktop παράθυρο χρησιμοποιώντας `ft.run(main)`.
 
+## 8. ⬛ ΑΠΟΦΥΓΗ ΓΚΡΙ ΟΘΟΝΗΣ & ΠΑΓΩΜΑΤΟΣ (GRAY SCREEN & FREEZE PREVENTION)
+
+*   **Layout — Χρήση `expand=True` στο Root**: Το `page.add()` δέχεται πάντα ένα root control με `expand=True`.
+*   **Απαγόρευση `expand=True` μέσα σε Scrollable Views**: Σε scrollable views (`ScrollMode.AUTO`), ΑΠΑΓΟΡΕΥΕΤΑΙ η χρήση `expand=True` σε εσωτερικά `Column` ή `Container` (προκαλεί collapse σε γκρι πλαίσιο). Χρησιμοποιούμε πάντα σταθερά πλάτη/ύψη (`width=...`, `height=...`).
+*   **Απαγόρευση `ft.VerticalDivider` χωρίς ρητό ύψος**: Μέσα σε `ft.Row` χωρίς καθορισμένο ύψος προκαλεί circular constraint violation στο Flutter.
+*   **Συγχρονισμένο UI Busy Lock**: Κατά την εκτέλεση βαριών εργασιών, απενεργοποιούμε προσωρινά τα κουμπιά και επαναφέρουμε πάντα σε μπλοκ `finally:`.
+*   **PyInstaller Binary Deduplication**: Στο `.spec` αρχείο φιλτράρουμε τα διπλότυπα root-level DLLs που υπάρχουν ήδη μέσα στο `flet_desktop\app\flet\` και εξαιρούμε τα `flet.testing`, `tkinter`, `unittest`, `pydoc`.
