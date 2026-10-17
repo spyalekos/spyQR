@@ -47,3 +47,18 @@
 - **Binary Deduplication**: Filter root-level duplicate DLLs in `SpyQR.spec` that already exist inside `flet_desktop\app\flet\` and exclude `flet.testing`, `tkinter`, `unittest`, `pydoc`.
 - **Native PyInstaller Splash Screen**: Use `Splash('assets/spyqr_splash.jpg', ...)` in `SpyQR.spec` (with a clean, text-free graphic) and close it via `pyi_splash.close()` in `src/main.py`.
 - **Silent Subprocesses on Windows**: When invoking external CLI tools via `subprocess`, pass `creationflags=subprocess.CREATE_NO_WINDOW` on Windows to prevent console window flashes.
+
+## 5. Current Project State & Session Handoff
+- **Current Version**: `0.2.2` (synchronized in `src/version.py`, `pyproject.toml`, `.agents/instructions.md`, `.agents/rules/instructions.md`).
+- **Next Version on Code Change**: `0.2.3`.
+- **GitHub Repository**: Public repository [`spyalekos/spyQR`](https://github.com/spyalekos/spyQR) (`origin/master` fully synced).
+- **Published GitHub Release**: [`v0.2.2`](https://github.com/spyalekos/spyQR/releases/tag/v0.2.2) with standalone executable `dist/SpyQR.exe` uploaded and Greek Release Notes.
+- **Splash Screen & Icon**: Clean text-free 3D holographic QR/Barcode graphic at `assets/spyqr_splash.jpg` (`600x340`) and app icon at `assets/icon.ico`.
+- **Application Architecture**:
+  - **Tab 1 ("Σαρωτής")**: Live OpenCV DirectShow camera stream (`camera_async_worker` + `ProgressRing` ticker + `force_window_repaint`), image file picker, clipboard image scanner, audio beep feedback, and Quick Action Bolt button (`ft.Icons.BOLT`) next to "Προβολή & Επεξεργασία".
+  - **Tab 2 ("Αποτέλεσμα")**: Smart Semantic Detection badge & structured details (Retail products with GS1 country & live OpenFoodFacts lookup + Skroutz/Google buttons, Books via OpenLibrary, Magazines, Gov.gr/AADE, Wi-Fi, vCard, vEvent, SEPA/IBAN, Crypto, GPS, SMS, Email, Tel, JSON) + syntax-highlighted `CodeEditor`.
+  - **Tab 3 ("Δημιουργός")**: QR & 1D Barcode generator (`QR`, `CODE128`, `EAN13`, `EAN8`, `UPCA`, `CODE39`), interactive RGB sliders (`0-255`), HEX input, preset color swatches, HSV `ColorPicker` (`on_color_change` with 8-char `#AARRGGBB` normalization), box size/border sliders, ECC selector, PNG export, and **Click-on-Map Geo QR Picker** (`flet_map.Map` with `on_tap` & Greek city presets) at the bottom.
+  - **Tab 4 ("Ιστορικό")**: Encrypted persistent scan history (`SecureStorage` + local fallback), `DataTable2` with search filter, 1-click reload/copy/delete, and UTF-8 CSV export.
+  - **Tab 5 ("Στατιστικά")**: Vertical analytics layout with large `PieChart` (percentages & legend) on top, `BarChart` histogram below, and 3 summary cards.
+  - **Tab 6 ("Βοήθεια")**: Comprehensive Greek user guide and creator references (**SpyAlekos** — `https://alekos.program.gr` & `https://github.com/spyalekos`).
+  - **AppBar**: Creator link, audio toggle, and full recursive Dark ↔ Light UI color inversion (`invert_control_tree`) via the lightbulb button.
