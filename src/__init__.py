@@ -1,0 +1,1 @@
+"""SpyQR package initialization."""

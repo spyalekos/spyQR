@@ -1,0 +1,57 @@
+[project]
+name = "spyqr"
+version = "0.2.2"
+description = "SpyQR - Έξυπνος Σαρωτής & Δημιουργός QR Codes και Barcodes (1D/2D)"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "SpyAlekos", email = "alekos@program.gr" }
+]
+dependencies = [
+    "flet>=1.0.4",
+    "flet-desktop>=1.0.4",
+    "flet-audio>=1.0.4",
+    "flet-permission-handler>=1.0.4",
+    "flet-lottie>=1.0.4",
+    "flet-spinkit>=1.0.4",
+    "flet-code-editor>=1.0.4",
+    "flet-color-pickers>=1.0.4",
+    "flet-secure-storage>=1.0.4",
+    "flet-charts>=1.0.4",
+    "flet-datatable2>=1.0.4",
+    "flet-map>=1.0.4",
+    "flet-webview>=1.0.4",
+    "flet-flashlight>=1.0.4",
+    "flet-geolocator>=1.0.4",
+    "flet-camera>=1.0.4",
+    "opencv-python>=4.10.0",
+    "qrcode[pil]>=8.0",
+    "pillow>=11.0",
+    "numpy>=2.0",
+    "zxing-cpp>=3.1.1",
+    "python-barcode>=0.16.1",
+]
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.22.3",
+    "watchdog>=6.0.0",
+]
+
+[tool.flet.app]
+path = "src"
+
+[tool.flet.plugins]
+flet_audio = "Audio"
+flet_permission_handler = "PermissionHandler"
+flet_secure_storage = "SecureStorage"
+flet_flashlight = "Flashlight"
+flet_geolocator = "Geolocator"
+flet_lottie = "Lottie"
+flet_spinkit = "SpinKit"
+flet_code_editor = "CodeEditor"
+flet_color_pickers = "ColorPicker"
+flet_datatable2 = "DataTable2"
+flet_map = "Map"
+flet_webview = "WebView"
+flet_camera = "Camera"
