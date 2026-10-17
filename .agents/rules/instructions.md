@@ -63,7 +63,7 @@ trigger: always
 5. **Εκδόσεις (Versioning):**
    - **CRITICAL:** Όταν αλλάζουμε ακόμη και ένα byte στον κώδικα, δημιουργούμε νέα έκδοση (version bump).
    - Χρησιμοποιούμε **δεκαδικό σύστημα με rollover** (π.χ. 0.1.0 -> 0.1.1 ... 0.1.9 -> 0.2.0, και 0.9.9 -> 1.0.0).
-   - Ενημερώνονται **ΟΛΕΣ** οι αναφορές συγχρονισμένα: `pyproject.toml`, `src/version.py`, `README.md`.
+   - Ενημερώνονται **ΟΛΕΣ** οι αναφορές συγχρονισμένα: `pyproject.toml`, `src/version.py` (Στο `README.md` **ΑΠΑΓΟΡΕΥΕΤΑΙ** η αναγραφή αριθμού έκδοσης, εντολών εκτέλεσης/build, δομής project ή links δημιουργού, σύμφωνα με το `.agents/rules/readme.md`).
 
 6. **Black Screen & Red Error Prevention (CRITICAL):**
    - Η «μαύρη οθόνη» ή το «κόκκινο πλαίσιο Flutter error» αποφεύγεται με structured try-except blocks στην `main`.

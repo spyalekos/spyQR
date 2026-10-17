@@ -1,29 +1,38 @@
-# SpyQR (v0.2.2) 🔍📱
+# SpyQR 🔍📱
 
-**SpyQR** is a modern, high-performance **QR Code & 1D/2D Barcode Scanner & Generator** utility (supporting QR, EAN-13, EAN-8, UPC-A/E, Code128, Code39, ITF, DataMatrix, PDF417, Aztec) built with **Python** and **Flet** (Material Design 3).
-
-It showcases the maximum integration of **Flet Built-in Extensions**:
-- 🔊 **`flet-audio`**: Audio feedback on scan detection (beep/chime) and UI events.
-- 🛡️ **`flet-permission-handler`**: Runtime permission queries for camera and storage.
-- 💫 **`flet-lottie`**: Rich animations for scanner targeting and success indicators.
-- ⏳ **`flet-spinkit`**: Polished loading spinners during camera stream setup and file processing.
-- 📝 **`flet-code-editor`**: In-app viewer and syntax-highlighted editor for scanned JSON, XML, Wi-Fi, and raw payload data.
-- 🎨 **`flet-color-pickers`**: Color palette picker for generating custom-styled QR codes and UI accents.
-- 🔐 **`flet-secure-storage`**: Secure persistent storage of scan history and settings.
-- 📊 **`flet-charts`**: Visual analytics and distribution charts (Pie & Bar) of scanned QR code types.
-- 📋 **`flet-datatable2`**: Comprehensive history data table with sorting, search filtering, copy, and export.
-- 🗺️ **`flet-map`**: Interactive Click-on-Map location picker in the Generator tab for creating GPS (`geo:lat,lon`) QR codes.
-- 🌐 **`flet-webview`**: In-app web preview for scanned URLs.
-- 📍 **`flet-geolocator`**: Geolocation retrieval for generating location-based QR codes.
-- 🔦 **`flet-flashlight`**: Flashlight control support.
-- 📷 **`flet-camera`** & **OpenCV DirectShow**: Dual-mode camera capture for desktop and mobile environments.
+> Έξυπνος Σαρωτής & Δημιουργός QR Codes και Γραμμωτών Κωδίκων (Barcodes 1D/2D) με αυτόματη σημασιολογική αναγνώριση περιεχομένου, ζωντανή αναζήτηση προϊόντων και διαδραστικό χάρτη τοποθεσίας.
 
 ---
 
-## 👨‍💻 Δημιουργός (Author)
-* **SpyAlekos** — [alekos.program.gr](https://alekos.program.gr) | [GitHub (@spyalekos)](https://github.com/spyalekos)
+## 🌟 Χαρακτηριστικά
+
+- 📷 **Ζωντανή Σάρωση Κάμερας & Εικόνων (1D / 2D)**: Ταυτόχρονη, υπερ-ταχεία ανάγνωση τόσο **QR Codes** όσο και κανονικών γραμμωτών κωδίκων (**EAN-13, EAN-8, UPC-A, UPC-E, Code-128, Code-39,Code-93, ITF, Codabar, DataMatrix, PDF417, Aztec**) μέσω ζωντανής ροής κάμερας (DirectShow), επιλογής αρχείου εικόνας ή επικόλλησης απευθείας από το πρόχειρο (Clipboard).
+- 🧠 **Έξυπνη Σημασιολογική Αναγνώριση (Smart Semantic Detection)**: Αυτόματη κατηγοριοποίηση και ανάλυση του τι ακριβώς σκανάρατε:
+  - 🛒 **Εμπορικά Προϊόντα Λιανικής (EAN-13 / EAN-8 / UPC / GTIN)**: Αυτόματος εντοπισμός χώρας προέλευσης βάσει προθέματος GS1 (π.χ. `520–521` = Ελλάδα 🇬🇷), ζωντανή ανάκτηση ονομασίας, μάρκας και κατηγορίας προϊόντος μέσω **OpenFoodFacts / OpenBeautyFacts / OpenProductsFacts** και άμεσα κουμπιά αναζήτησης τιμών στο **Skroutz** και στο **Google**.
+  - 📚 **Βιβλία (ISBN-13) & Περιοδικά / Τύπος (ISSN)**: Αυτόματος διαχωρισμός εκδόσεων (`978`/`979` και `977`) με online ανάκτηση τίτλου βιβλίου και συγγραφέα μέσω **OpenLibrary**.
+  - 🏛️ **Έγγραφα Gov.gr / ΑΑΔΕ & Ηλεκτρονικές Αποδείξεις**: Άμεση αναγνώριση κρατικών συνδέσμων επαλήθευσης εγγράφων και φορολογικών αποδείξεων ταμειακών μηχανών.
+  - 📶 **Δίκτυα Wi-Fi**: Αυτόματη εξαγωγή ονόματος δικτύου (SSID), τύπου ασφαλείας (WPA/WPA2/WEP) και κωδικού πρόσβασης.
+  - 👤 **Επαφές (vCard / MeCard) & Ραντεβού Ημερολογίου (vEvent)**: Δομημένη παρουσίαση ονοματεπώνυμου, τηλεφώνων, email, οργανισμού και στοιχείων εκδήλωσης.
+  - 💳 **Τραπεζικές Πληρωμές (SEPA / EPC / IBAN) & Κρυπτονομίσματα**: Αναγνώριση εντολών μεταφοράς SEPA, λογαριασμών IBAN και διευθύνσεων Bitcoin/Ethereum.
+  - 📍 **Γεωγραφικές Συντεταγμένες (GPS `geo:`)**: Εξαγωγή γεωγραφικού πλάτους και μήκους με άμεσο άνοιγμα στους Χάρτες.
+  - ✉️ **Τηλέφωνα, SMS, Email & Δομημένα Δεδομένα JSON**: Πλήρης ανάλυση παραληπτών, θέματος, μηνύματος και μορφοποίηση κώδικα.
+- ⚡ **Κουμπί Άμεσης Ενέργειας (Αστραπή)**: Εκτελεί ακαριαία την προκαθορισμένη ενέργεια ανάλογα με τον τύπο του κώδικα — ανοίγει ιστοσελίδες απευθείας στον προεπιλεγμένο φυλλομετρητή (Browser), τοποθεσίες GPS απευθείας στο **Google Maps**, και προϊόντα ή σύνθετα δεδομένα στην αναλυτική καρτέλα προβολής.
+- 🎨 **Πλήρης Δημιουργός QR Codes & Barcodes**: Δημιουργία προσαρμοσμένων κωδίκων **QR, EAN-13, EAN-8, UPC-A, Code-128 και Code-39** με:
+  - Ακριβή έλεγχο χρώματος μέσω **ρυθμιστικών RGB (0–255)**, κωδικού **HEX**, έτοιμων χρωματικών παλετών, επιλογής χρώματος φόντου και σύνθετου επιλογέα φάσματος HSV.
+  - Ρυθμιστικά μεγέθους κουκκίδας (`Box Size`), περιθωρίου (`Border`) και επιπέδου διόρθωσης σφαλμάτων (`ECC L/M/Q/H`).
+  - Έτοιμα πρότυπα ενός κλικ (Wi-Fi, Επαφή vCard, Συντεταγμένες GPS, Προϊόν EAN-13) και αποθήκευση εικόνας υψηλής ευκρίνειας (`.png`).
+- 🗺️ **Διαδραστικός Χάρτης Επιλογής Τοποθεσίας (Click-on-Map Geo QR)**: Ενσωματωμένος διαδραστικός χάρτης στο κάτω μέρος του Δημιουργού, όπου με ένα κλικ σε οποιοδήποτε σημείο του χάρτη (ή επιλέγοντας από τις έτοιμες ελληνικές πόλεις) μετακινείται η πινέζα και δημιουργείται αυτόματα το αντίστοιχο QR Code τοποθεσίας (`geo:lat,lon`).
+- 📝 **Επεξεργαστής Κώδικα & Δομημένων Δεδομένων**: Προβολή και επεξεργασία του περιεχομένου σάρωσης με χρωματική επισήμανση σύνταξης (Syntax Highlighting).
+- 📋 **Ιστορικό Σαρώσεων & Εξαγωγή CSV**: Αυτόματη κρυπτογραφημένη αποθήκευση όλων των σαρώσεων με ζωντανή αναζήτηση, ταξινόμηση, αντιγραφή, γρήγορη επαναφόρτωση και εξαγωγή σε αρχείο **CSV (UTF-8)**.
+- 📊 **Αναλυτικά Στατιστικά & Γραφήματα**: Μεγάλο **Διάγραμμα Πίτας** με ποσοστιαία κατανομή και αναλυτικό υπόμνημα στην κορυφή, και **Ιστόγραμμα (Ραβδόγραμμα)** κατανομής σαρώσεων ανά κατηγορία από κάτω, μαζί με κάρτες σύνοψης και δημοφιλέστερης κατηγορίας.
+- 💡 **Πλήρης Αντιστροφή Χρωμάτων (Dark ↔ Light Invert)**: Άμεση αντιστροφή των χρωμάτων όλων των στοιχείων του περιβάλλοντος με το πάτημα του εικονιδίου της λάμπας στην πάνω μπάρα.
+- 🔊 **Ηχητική Επιβεβαίωση**: Ηχητικό σήμα (beep) κατά την επιτυχή ανάγνωση κώδικα με δυνατότητα ενεργοποίησης/απενεργοποίησης.
+- ❓ **Ενσωματωμένος Οδηγός Βοήθειας**: Αναλυτική καρτέλα οδηγιών χρήσης για όλες τις λειτουργίες της εφαρμογής.
 
 ---
 
-## 📜 Άδεια Χρήσης
-MIT License
+## 🛠️ Αντιμετώπιση Προβλημάτων & Οδηγίες
+
+- 📷 **Πρόσβαση στην Κάμερα**: Βεβαιωθείτε ότι η κάμερα δεν χρησιμοποιείται ταυτόχρονα από άλλη εφαρμογή βιντεοκλήσης και ότι είναι ενεργοποιημένη η πρόσβαση κάμερας στις ρυθμίσεις απορρήτου των Windows.
+- 📏 **Σάρωση Μικρών Barcodes Προϊόντων**: Κρατήστε τη συσκευασία του προϊόντος σταθερά σε απόσταση 10–20 εκ. από την κάμερα με επαρκή φωτισμό, ή χρησιμοποιήστε το κουμπί **«Εικόνα»** για φόρτωση καθαρής φωτογραφίας του barcode.
+- 🌐 **Ανάκτηση Στοιχείων Προϊόντων & Χάρτης**: Για την αυτόματη εύρεση ονομασίας προϊόντων (OpenFoodFacts), βιβλίων (OpenLibrary) και τη φόρτωση του διαδραστικού χάρτη απαιτείται ενεργή σύνδεση στο διαδίκτυο. Η σάρωση, η αποκωδικοποίηση GS1 και η δημιουργία QR/Barcodes λειτουργούν 100% και χωρίς σύνδεση (Offline).
