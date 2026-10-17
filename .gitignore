@@ -16,3 +16,8 @@ dist/
 *.swp
 .DS_Store
 Thumbs.db
+
+# AI Agent instructions & configurations (local only)
+.agents/
+.agent/
+

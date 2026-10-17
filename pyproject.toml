@@ -1,6 +1,6 @@
 [project]
 name = "spyqr"
-version = "0.2.5"
+version = "0.2.6"
 description = "SpyQR - Έξυπνος Σαρωτής & Δημιουργός QR Codes και Barcodes (1D/2D)"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -44,7 +44,7 @@ product = "SpyQR"
 company = "SpyAlekos"
 copyright = "Copyright (C) 2026 SpyAlekos"
 build_number = 1
-version = "0.2.5"
+version = "0.2.6"
 
 [tool.flet.app]
 path = "src"
