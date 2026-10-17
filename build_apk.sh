@@ -25,8 +25,8 @@ export ANDROID_HOME="/home/user/Android/sdk"
 export ANDROID_SDK_ROOT="/home/user/Android/sdk"
 export PATH="/home/user/flutter/3.44.8/bin:$JAVA_HOME/bin:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
 
-# Αυστηρός περιορισμός μνήμης (< 768 MB) & SerialGC για αποφυγή παγώματος συστήματος
-JVM_LOW_MEM="-Xmx768m -Xms128m -XX:MaxMetaspaceSize=256m -XX:ReservedCodeCacheSize=64m -XX:+UseSerialGC -Dfile.encoding=UTF-8"
+# Αυστηρός περιορισμός μνήμης (< 896 MB) & SerialGC για αποφυγή παγώματος συστήματος
+JVM_LOW_MEM="-Xmx896m -Xms128m -XX:MaxMetaspaceSize=256m -XX:ReservedCodeCacheSize=64m -XX:+UseSerialGC -Dfile.encoding=UTF-8"
 export _JAVA_OPTIONS="$JVM_LOW_MEM"
 export GRADLE_OPTS="$JVM_LOW_MEM -Dorg.gradle.jvmargs=\"$JVM_LOW_MEM\" -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=1 -Dorg.gradle.vfs.watch=false -Dkotlin.incremental=false -Dkotlin.compiler.execution.strategy=in-process"
 export FLET_CLI_NO_RICH_OUTPUT=1
@@ -189,6 +189,13 @@ if "android.permission.CAMERA" not in content:
         1,
     )
 
+if 'xmlns:tools=' not in content:
+    content = content.replace(
+        '<manifest xmlns:android="http://schemas.android.com/apk/res/android">',
+        '<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">',
+        1,
+    )
+
 if 'android:scheme="spyqr"' not in content:
     intent_filter = """            <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -198,6 +205,14 @@ if 'android:scheme="spyqr"' not in content:
             </intent-filter>
         </activity>"""
     content = content.replace("</activity>", intent_filter, 1)
+
+if "com.journeyapps.barcodescanner.CaptureActivity" not in content:
+    capture_act = """        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:screenOrientation="fullSensor"
+            tools:replace="screenOrientation" />
+    </application>"""
+    content = content.replace("</application>", capture_act, 1)
 
 with open(path, "w", encoding="utf-8") as f:
     f.write(content)
@@ -396,7 +411,7 @@ KOTLIN
     cat > "${android_dir}/gradle.properties" <<EOF
 org.gradle.jvmargs=$JVM_LOW_MEM
 android.useAndroidX=true
-android.enableJetifier=true
+android.enableJetifier=false
 org.gradle.daemon=false
 org.gradle.parallel=false
 org.gradle.workers.max=1
@@ -420,7 +435,7 @@ EOF
     cp -r assets/* "${ANDROID_STAGE}/build/python-app/assets/" 2>/dev/null || true
 
     echo "📦 Εκτέλεση flutter pub get στο εξωτερικό stage..."
-    (cd "$flutter_dir" && /home/user/flutter/3.44.8/bin/flutter pub get --no-version-check --suppress-analytics)
+    (cd "$flutter_dir" && /home/user/flutter/3.44.8/bin/flutter --no-version-check --suppress-analytics pub get --no-precompile)
 
     sync
     free_memory_guards
@@ -463,6 +478,32 @@ run_phase4_gradle_package() {
     local flutter_dir="${ANDROID_STAGE}/build/flutter"
     local android_dir="${flutter_dir}/android"
 
+    echo "📦 Συγχρονισμός κώδικα Python στο ${ANDROID_STAGE}/build/python-app..."
+    rm -rf "${ANDROID_STAGE}/build/python-app"
+    mkdir -p "${ANDROID_STAGE}/build/python-app/assets"
+    cp -r src/* "${ANDROID_STAGE}/build/python-app/"
+    cp -r assets/* "${ANDROID_STAGE}/build/python-app/assets/" 2>/dev/null || true
+
+    cat > "${android_dir}/local.properties" <<EOF
+sdk.dir=/home/user/Android/sdk
+flutter.sdk=/home/user/flutter/3.44.8
+flutter.buildMode=release
+flutter.versionName=${VERSION}
+flutter.versionCode=${BUILD_NUMBER}
+EOF
+
+    cat > "${android_dir}/gradle.properties" <<EOF
+org.gradle.jvmargs=$JVM_LOW_MEM
+android.useAndroidX=true
+android.enableJetifier=false
+org.gradle.daemon=false
+org.gradle.parallel=false
+org.gradle.workers.max=1
+org.gradle.vfs.watch=false
+kotlin.incremental=false
+kotlin.compiler.execution.strategy=in-process
+EOF
+
     export SERIOUS_PYTHON_VERSION="3.14"
     export SERIOUS_PYTHON_SITE_PACKAGES="${ANDROID_STAGE}/build/site-packages"
     export SERIOUS_PYTHON_APP="${ANDROID_STAGE}/build/python-app"
@@ -470,13 +511,17 @@ run_phase4_gradle_package() {
 
     (
         cd "$android_dir"
+        if [ ! -f gradlew ]; then
+            cp -rf /home/user/flutter/3.44.8/bin/cache/artifacts/gradle_wrapper/* .
+        fi
         chmod +x gradlew
         ./gradlew assembleRelease \
             -Ptarget-platform=android-arm64 \
             -x compileFlutterBuildRelease \
-            -x lintVitalRelease \
-            -x lintVitalAnalyzeRelease \
-            -x lintVitalReportRelease \
+            -x downloadDistArchive_armeabi-v7a \
+            -x downloadDistArchive_x86_64 \
+            -x downloadDartBridge_armeabi-v7a \
+            -x downloadDartBridge_x86_64 \
             --no-daemon \
             --max-workers=1 \
             -Dorg.gradle.jvmargs="$JVM_LOW_MEM" \

@@ -49,8 +49,8 @@
 - **Silent Subprocesses on Windows**: When invoking external CLI tools via `subprocess`, pass `creationflags=subprocess.CREATE_NO_WINDOW` on Windows to prevent console window flashes.
 
 ## 5. Current Project State & Session Handoff
-- **Current Version**: `0.2.4` (synchronized in `src/version.py`, `pyproject.toml`, `.agents/instructions.md`, `.agents/rules/instructions.md`).
-- **Next Version on Code Change**: `0.2.5`.
+- **Current Version**: `0.2.5` (synchronized in `src/version.py`, `pyproject.toml`, `.agents/instructions.md`, `.agents/rules/instructions.md`).
+- **Next Version on Code Change**: `0.2.6`.
 - **GitHub Repository**: Public repository [`spyalekos/spyQR`](https://github.com/spyalekos/spyQR) (`origin/master` fully synced).
 - **Published GitHub Release**: [`v0.2.2`](https://github.com/spyalekos/spyQR/releases/tag/v0.2.2) with standalone executable `dist/SpyQR.exe` uploaded and Greek Release Notes.
 - **Splash Screen & Icon**: Clean text-free 3D holographic QR/Barcode graphic at `assets/spyqr_splash.jpg` (`600x340`) and app icon at `assets/icon.ico` / `assets/icon.png`.

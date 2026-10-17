@@ -620,7 +620,7 @@ def main(page: ft.Page):
                             ft.Row(
                                 [
                                     ft.Button(
-                                        content=ft.Text("Προβολή & Επεξεργασία"),
+                                        content=ft.Text("Προβολή & Επεξεργασία", size=13 if is_android else 14),
                                         on_click=lambda _: setattr(tabs, "selected_index", 1) or page.update(),
                                         bgcolor=ft.Colors.BLUE_700,
                                         color=ft.Colors.WHITE,
@@ -634,6 +634,7 @@ def main(page: ft.Page):
                                     ),
                                 ],
                                 spacing=8,
+                                wrap=True,
                                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
                             ),
                         ],
@@ -703,7 +704,7 @@ def main(page: ft.Page):
         padding=ft.Padding.symmetric(horizontal=10, vertical=4),
         border_radius=6,
     )
-    result_title_text = ft.Text("Εμπορικό Προϊόν (EAN-13)", size=20, weight=ft.FontWeight.BOLD)
+    result_title_text = ft.Text("Εμπορικό Προϊόν (EAN-13)", size=17 if is_android else 20, weight=ft.FontWeight.BOLD)
     result_raw_text = ft.Text(
         "5201054001050",
         size=14,
@@ -830,13 +831,14 @@ def main(page: ft.Page):
                 ft.Row(
                     [
                         ft.Icon(ft.Icons.FACT_CHECK, color=ft.Colors.AMBER_400, size=28),
-                        ft.Text("Έξυπνη Αναγνώριση & Ανάλυση Κώδικα", size=22, weight=ft.FontWeight.BOLD),
+                        ft.Text("Έξυπνη Αναγνώριση & Ανάλυση Κώδικα", size=18 if is_android else 22, weight=ft.FontWeight.BOLD, expand=True),
                     ],
                 ),
                 ft.Row(
                     [result_type_badge, result_title_text],
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                     spacing=12,
+                    wrap=True,
                 ),
                 result_summary_text,
                 ft.Container(
@@ -845,7 +847,7 @@ def main(page: ft.Page):
                             ft.Row(
                                 [
                                     ft.Icon(ft.Icons.AUTO_AWESOME, color=ft.Colors.AMBER_300, size=18),
-                                    ft.Text("Αναγνωρισμένα Στοιχεία (Smart Detection):", size=13, weight=ft.FontWeight.BOLD, color=ft.Colors.AMBER_300),
+                                    ft.Text("Αναγνωρισμένα Στοιχεία (Smart Detection):", size=13, weight=ft.FontWeight.BOLD, color=ft.Colors.AMBER_300, expand=True),
                                 ],
                                 spacing=6,
                             ),
@@ -884,7 +886,7 @@ def main(page: ft.Page):
             scroll=ft.ScrollMode.AUTO,
             spacing=12,
         ),
-        padding=20,
+        padding=14 if is_android else 20,
     )
 
     def update_result_tab(parsed: Dict[str, Any]):
@@ -1599,6 +1601,9 @@ def main(page: ft.Page):
             fdt.DataColumn2(label=ft.Text("Ενέργειες"), size=fdt.DataColumnSize.M),
         ],
         rows=[],
+        min_width=560 if is_android else None,
+        column_spacing=10 if is_android else None,
+        horizontal_margin=8 if is_android else None,
         border=ft.Border.all(1, "#232f47"),
         border_radius=8,
     )
@@ -1761,7 +1766,7 @@ def main(page: ft.Page):
                 ft.Row(
                     [
                         ft.Icon(ft.Icons.HISTORY, color=ft.Colors.TEAL_400, size=28),
-                        ft.Text("Ιστορικό Σαρώσεων", size=18 if is_android else 22, weight=ft.FontWeight.BOLD),
+                        ft.Text("Ιστορικό Σαρώσεων", size=18 if is_android else 22, weight=ft.FontWeight.BOLD, expand=True),
                     ],
                 ),
                 ft.Row(
@@ -2041,7 +2046,7 @@ def main(page: ft.Page):
                 ft.Row(
                     [
                         ft.Icon(ft.Icons.BAR_CHART, color=ft.Colors.INDIGO_400, size=28),
-                        ft.Text("Στατιστικά & Ανάλυση Σαρώσεων", size=18 if is_android else 22, weight=ft.FontWeight.BOLD),
+                        ft.Text("Στατιστικά & Ανάλυση Σαρώσεων", size=18 if is_android else 22, weight=ft.FontWeight.BOLD, expand=True),
                     ],
                 ),
                 ft.Row(
@@ -2189,7 +2194,7 @@ def main(page: ft.Page):
                 ft.Row(
                     [
                         ft.Icon(ft.Icons.HELP_OUTLINE, color=ft.Colors.CYAN_400, size=28),
-                        ft.Text("Οδηγός Χρήσης & Βοήθεια (SpyQR)", size=18 if is_android else 22, weight=ft.FontWeight.BOLD),
+                        ft.Text("Οδηγός Χρήσης & Βοήθεια (SpyQR)", size=18 if is_android else 22, weight=ft.FontWeight.BOLD, expand=True),
                     ],
                 ),
                 ft.Text(
@@ -2536,25 +2541,28 @@ def main(page: ft.Page):
     theme_toggle_btn.on_click = toggle_theme_invert
 
     app_bar = ft.AppBar(
-        leading=ft.Icon(ft.Icons.QR_CODE_2, color=ft.Colors.CYAN_400, size=28 if is_android else 30),
+        leading=ft.Icon(ft.Icons.QR_CODE_2, color=ft.Colors.CYAN_400, size=24 if is_android else 30),
+        leading_width=40 if is_android else None,
+        title_spacing=0 if is_android else None,
         title=ft.Row(
             [
-                ft.Text(APP_NAME, size=18 if is_android else 20, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                ft.Text(APP_NAME, size=16 if is_android else 20, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
                 ft.Container(
-                    content=ft.Text(f"v{__version__}", size=11, color=ft.Colors.CYAN_200, weight=ft.FontWeight.BOLD),
+                    content=ft.Text(f"v{__version__}", size=10 if is_android else 11, color=ft.Colors.CYAN_200, weight=ft.FontWeight.BOLD),
                     bgcolor="#0e7490",
-                    padding=ft.Padding.symmetric(horizontal=6, vertical=2),
+                    padding=ft.Padding.symmetric(horizontal=5 if is_android else 6, vertical=2),
                     border_radius=4,
                 ),
-                ft.Text("•", size=12, color=ft.Colors.GREY_600),
                 ft.TextButton(
-                    content=ft.Text("by SpyAlekos", size=12, weight=ft.FontWeight.W_600, color=ft.Colors.CYAN_300),
+                    content=ft.Text("by SpyAlekos", size=11 if is_android else 12, weight=ft.FontWeight.W_600, color=ft.Colors.CYAN_300),
+                    style=ft.ButtonStyle(padding=ft.Padding.symmetric(horizontal=4, vertical=0)) if is_android else None,
                     on_click=lambda _: open_external_url("https://alekos.program.gr"),
                     tooltip="Δημιουργός: SpyAlekos (https://alekos.program.gr)",
                 ),
             ],
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=6 if is_android else 8,
+            spacing=4 if is_android else 8,
+            tight=True,
         ),
         actions=[
             theme_toggle_btn,

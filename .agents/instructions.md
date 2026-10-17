@@ -97,7 +97,8 @@
 
 ## 📍 Τελευταία Γνωστή Κατάσταση (Last Known State)
 
-### 🚀 ΤΡΕΧΟΥΣΑ ΕΚΔΟΣΗ: v0.2.4
+### 🚀 ΤΡΕΧΟΥΣΑ ΕΚΔΟΣΗ: v0.2.5
+- Βελτιστοποίηση εμφάνισης Android UI (`AppBar`, `DataTable2` με οριζόντια κύλιση `min_width=560`, αυτόματη αναδίπλωση επικεφαλίδων & κουμπιών στις καρτέλες `Σαρωτής`/`Αποτέλεσμα`/`Ιστορικό`/`Στατιστικά`/`Βοήθεια`, και υποστήριξη `fullSensor` Portrait/Landscape στο ZXing `CaptureActivity`).
 - Βελτιστοποίηση **Οικονομίας Μνήμης (Ultra-Low-RAM APK Build)** στο `build_apk.sh` και στο `pyproject.toml` (`[tool.flet.android.gradle_properties]`):
   - Μεταφορά του Android staging εκτός workspace (`/tmp/spyqr_android_stage`, κατά το πρότυπο του `NoteSpy`) και τερματισμός του `dart language-server --protocol lsp` ώστε να εξοικονομείται `1.3 GB RAM`.
   - Αντικατάσταση του default `-Xmx8G` του Flet 1.0.4 με `-Xmx768m -Xms128m -XX:MaxMetaspaceSize=256m -XX:ReservedCodeCacheSize=64m -XX:+UseSerialGC` και διαχωρισμός του build σε 4 σειριακές φάσεις (Python stage -> Native ZXing patch -> standalone `flutter assemble` -> `./gradlew assembleRelease -x compileFlutterBuildRelease -x lintVitalRelease`) ώστε το `gen_snapshot` και το Gradle JVM να μην τρέχουν ποτέ ταυτόχρονα στη μνήμη.
