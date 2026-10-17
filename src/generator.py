@@ -78,18 +78,21 @@ def generate_qr_image(
             buf = io.BytesIO()
             mod_height = max(8.0, float(box_size) * 1.4)
             quiet_z = max(1.0, float(border))
-            b_obj.write(
-                buf,
-                options={
-                    "foreground": fg_hex,
-                    "background": bg_hex,
-                    "module_height": mod_height,
-                    "module_width": 0.35,
-                    "quiet_zone": quiet_z,
-                    "font_size": 10,
-                    "text_distance": 4.0,
-                },
-            )
+            write_opts = {
+                "foreground": fg_hex,
+                "background": bg_hex,
+                "module_height": mod_height,
+                "module_width": 0.35,
+                "quiet_zone": quiet_z,
+                "font_size": 10,
+                "text_distance": 4.0,
+            }
+            try:
+                b_obj.write(buf, options=write_opts)
+            except Exception:
+                buf = io.BytesIO()
+                write_opts["write_text"] = False
+                b_obj.write(buf, options=write_opts)
             buf.seek(0)
             img = Image.open(buf).convert("RGB")
             out_buf = io.BytesIO()

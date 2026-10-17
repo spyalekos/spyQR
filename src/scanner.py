@@ -1,21 +1,93 @@
-"""QR code & 1D/2D Barcode scanner (ZXing-CPP + OpenCV), smart semantic classifier, online product/book resolver, and webcam stream manager."""
+"""QR code & 1D/2D Barcode scanner (ZXing-CPP + OpenCV + Android Native ZXing Bridge), smart semantic classifier, online product/book resolver, and webcam stream manager."""
 
 import json
+import os
 import re
 import threading
 import time
 import urllib.parse
 import urllib.request
 from typing import Any, Callable, Dict, List, Optional, Tuple
-import cv2
-import numpy as np
-from PIL import ImageGrab
+
+try:
+    import cv2
+    import numpy as np
+    HAS_CV2 = True
+except ImportError:
+    cv2 = None  # type: ignore
+    np = None  # type: ignore
+    HAS_CV2 = False
+
+try:
+    from PIL import ImageGrab
+    HAS_IMAGEGRAB = True
+except ImportError:
+    ImageGrab = None  # type: ignore
+    HAS_IMAGEGRAB = False
 
 try:
     import zxingcpp
     HAS_ZXING = True
 except ImportError:
     HAS_ZXING = False
+
+PACKAGE_ID = "gr.spyalekos.spyqr"
+SCAN_COMMAND_URL = "spyqr://scan/start"
+SCAN_FILE_URL_PREFIX = "spyqr://scan/file?path="
+SCAN_RESULT_FILE = ".spyqr_scan_result.json"
+
+
+def get_android_scan_result_paths() -> List[str]:
+    """Returns candidate file paths where Android MainActivity writes scan results."""
+    paths: List[str] = []
+    env_data = os.environ.get("FLET_APP_STORAGE_DATA")
+    if env_data:
+        paths.append(os.path.join(env_data, SCAN_RESULT_FILE))
+        parent = os.path.dirname(env_data.rstrip("/"))
+        if parent:
+            paths.append(os.path.join(parent, "files", SCAN_RESULT_FILE))
+    paths.extend([
+        f"/data/user/0/{PACKAGE_ID}/files/{SCAN_RESULT_FILE}",
+        f"/data/data/{PACKAGE_ID}/files/{SCAN_RESULT_FILE}",
+        f"/sdcard/Android/data/{PACKAGE_ID}/files/{SCAN_RESULT_FILE}",
+    ])
+    seen = set()
+    unique: List[str] = []
+    for p in paths:
+        if p not in seen:
+            seen.add(p)
+            unique.append(p)
+    return unique
+
+
+def clear_android_scan_results() -> None:
+    """Deletes any stale Android scan result JSON files before starting a new scan."""
+    for p in get_android_scan_result_paths():
+        try:
+            if os.path.exists(p):
+                os.remove(p)
+        except Exception:
+            pass
+
+
+def read_latest_android_scan_result(last_ts: int) -> Tuple[Optional[Dict[str, Any]], int]:
+    """Reads and consumes the latest Android native scan result JSON if newer than last_ts."""
+    for p in get_android_scan_result_paths():
+        try:
+            if os.path.exists(p):
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                ts = int(data.get("ts") or 0)
+                if ts > last_ts:
+                    try:
+                        os.remove(p)
+                    except Exception:
+                        pass
+                    return data, ts
+        except Exception:
+            pass
+    return None, last_ts
+
 
 
 BARCODE_1D_FORMATS = {
@@ -540,12 +612,12 @@ class CameraScanner:
     ):
         self.on_frame = on_frame
         self.on_scan = on_scan
-        self._cap: Optional[cv2.VideoCapture] = None
+        self._cap: Optional[Any] = None
         self._thread: Optional[threading.Thread] = None
         self._running = False
-        self._qr_detector = cv2.QRCodeDetector()
+        self._qr_detector = cv2.QRCodeDetector() if HAS_CV2 else None
         self._barcode_detector = (
-            cv2.barcode.BarcodeDetector() if hasattr(cv2, "barcode") else None
+            cv2.barcode.BarcodeDetector() if (HAS_CV2 and hasattr(cv2, "barcode")) else None
         )
         self._last_detected_text = ""
         self._last_scan_time = 0.0
@@ -555,9 +627,12 @@ class CameraScanner:
         return self._running
 
     def _detect_any_code(
-        self, frame: np.ndarray
-    ) -> Tuple[Optional[str], str, Optional[np.ndarray]]:
+        self, frame: Any
+    ) -> Tuple[Optional[str], str, Optional[Any]]:
         """Detects QR codes and all 1D/2D Barcodes using ZXing-CPP with OpenCV fallback."""
+        if not HAS_CV2:
+            return None, "", None
+
         if HAS_ZXING:
             try:
                 results = zxingcpp.read_barcodes(frame)
@@ -580,12 +655,13 @@ class CameraScanner:
             except Exception as e:
                 print(f"[CameraScanner] ZXing detection error: {e}")
 
-        try:
-            val, pts, _ = self._qr_detector.detectAndDecode(frame)
-            if val:
-                return val.strip(), "QRCode", pts
-        except Exception:
-            pass
+        if self._qr_detector is not None:
+            try:
+                val, pts, _ = self._qr_detector.detectAndDecode(frame)
+                if val:
+                    return val.strip(), "QRCode", pts
+            except Exception:
+                pass
 
         if self._barcode_detector is not None:
             try:
@@ -603,10 +679,12 @@ class CameraScanner:
 
     def open_camera(self, camera_index: int = 0) -> bool:
         """Opens the webcam device without starting an OS thread (for async loop usage)."""
+        if not HAS_CV2:
+            return False
         if self._running and self._cap and self._cap.isOpened():
             return True
 
-        cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
+        cap = cv2.VideoCapture(camera_index, getattr(cv2, "CAP_DSHOW", 0))
         if not cap.isOpened():
             cap = cv2.VideoCapture(camera_index)
 
@@ -624,7 +702,7 @@ class CameraScanner:
 
     def grab_frame(self) -> Tuple[Optional[bytes], Optional[Tuple[str, Dict[str, Any]]]]:
         """Reads and processes a single frame synchronously (designed for asyncio.to_thread)."""
-        if not self._running or not self._cap or not self._cap.isOpened():
+        if not HAS_CV2 or not self._running or not self._cap or not self._cap.isOpened():
             return None, None
 
         ret, frame = self._cap.read()
@@ -728,6 +806,8 @@ class CameraScanner:
 
     def scan_image_file(self, file_path: str) -> Optional[Tuple[str, Dict[str, Any]]]:
         """Scans a static image file from disk for QR codes or Barcodes."""
+        if not HAS_CV2:
+            return None
         try:
             img_array = np.fromfile(file_path, dtype=np.uint8)
             img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
@@ -743,6 +823,8 @@ class CameraScanner:
 
     def scan_clipboard(self) -> Optional[Tuple[str, Dict[str, Any]]]:
         """Scans an image currently stored in system clipboard for QR codes or Barcodes."""
+        if not HAS_CV2 or not HAS_IMAGEGRAB or ImageGrab is None:
+            return None
         try:
             clip_img = ImageGrab.grabclipboard()
             if clip_img is not None:

@@ -1,24 +1,33 @@
 import asyncio
 import base64
+import csv
+import io
 import json
 import os
 import sys
 import threading
 import time
+import urllib.parse
 import webbrowser
 from typing import Any, Dict, List, Optional
 import flet as ft
 
-# 14 Flet Built-in Extensions:
+# Flet Built-in Extensions:
 import flet_audio as fa
-import flet_camera as fcam
+try:
+    import flet_camera as fcam
+except ImportError:
+    fcam = None  # type: ignore
 import flet_charts as fc
 import flet_code_editor as fce
 import flet_color_pickers as fcp
 import flet_datatable2 as fdt
 import flet_flashlight as ff
 import flet_geolocator as fg
-import flet_lottie as flot
+try:
+    import flet_lottie as flot
+except ImportError:
+    flot = None  # type: ignore
 import flet_map as fm
 import flet_permission_handler as fph
 import flet_secure_storage as fss
@@ -27,7 +36,15 @@ import flet_webview as fwv
 
 from generator import generate_qr_image, save_qr_to_file
 from history import HistoryManager
-from scanner import CameraScanner, lookup_product_online, parse_qr_content
+from scanner import (
+    SCAN_COMMAND_URL,
+    SCAN_FILE_URL_PREFIX,
+    CameraScanner,
+    clear_android_scan_results,
+    lookup_product_online,
+    parse_qr_content,
+    read_latest_android_scan_result,
+)
 from version import APP_DESCRIPTION, APP_NAME, __version__
 
 
@@ -37,24 +54,29 @@ def get_assets_path() -> str:
         return os.path.join(sys._MEIPASS, "assets")
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     assets_dir = os.path.join(base_dir, "assets")
-    os.makedirs(assets_dir, exist_ok=True)
+    try:
+        os.makedirs(assets_dir, exist_ok=True)
+    except Exception:
+        pass
     return assets_dir
 
 
 def main(page: ft.Page):
     """Main application lifecycle and UI setup."""
+    is_android = (page.platform == ft.PagePlatform.ANDROID) or (sys.platform == "android")
     page.title = f"{APP_NAME} v{__version__} - QR Code Scanner & Utility"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
-    page.window.width = 1100
-    page.window.height = 800
-    page.window.min_width = 850
-    page.window.min_height = 650
+    if not is_android:
+        page.window.width = 1100
+        page.window.height = 800
+        page.window.min_width = 850
+        page.window.min_height = 650
 
-    try:
-        page.run_task(page.window.center)
-    except Exception:
-        pass
+        try:
+            page.run_task(page.window.center)
+        except Exception:
+            pass
 
     assets_dir = get_assets_path()
     beep_wav_path = os.path.join(assets_dir, "beep.wav")
@@ -71,6 +93,7 @@ def main(page: ft.Page):
     flashlight_service = ff.Flashlight()
     geolocator_service = fg.Geolocator()
     clipboard_service = ft.Clipboard()
+    url_launcher = ft.UrlLauncher()
 
     page.services.append(audio_player)
     page.services.append(permission_handler)
@@ -78,6 +101,22 @@ def main(page: ft.Page):
     page.services.append(flashlight_service)
     page.services.append(geolocator_service)
     page.services.append(clipboard_service)
+    page.services.append(url_launcher)
+
+    def open_external_url(url: str):
+        """Opens an external URL or deep link on both Android (via UrlLauncher) and Desktop (via webbrowser)."""
+        if not url:
+            return
+        if is_android:
+            try:
+                page.run_task(url_launcher.launch_url, url, mode=ft.LaunchMode.EXTERNAL_APPLICATION)
+            except Exception as ex:
+                print(f"[UrlLauncher] Error: {ex}")
+        else:
+            try:
+                webbrowser.open(url)
+            except Exception as ex:
+                print(f"[WebBrowser] Error: {ex}")
 
     # ---------------------------------------------------------
     # 2. STATE & MANAGERS
@@ -116,24 +155,30 @@ def main(page: ft.Page):
         b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc`\x60\x60"
         b"\x00\x00\x00\x04\x00\x01\xf6\x178U\x00\x00\x00\x00IEND\xaeB`\x82"
     )
+    cam_w = None if is_android else 640
+    cam_h = 230 if is_android else 480
     camera_view = ft.Image(
         src=INITIAL_FRAME_BYTES,
         fit=ft.BoxFit.CONTAIN,
-        width=640,
-        height=480,
+        width=cam_w,
+        height=cam_h,
         border_radius=12,
         gapless_playback=True,
     )
     placeholder_status_text = ft.Text(
-        "Η κάμερα είναι ανενεργή",
+        "Έτοιμο για Σάρωση Κάμερας" if is_android else "Η κάμερα είναι ανενεργή",
         size=16,
         weight=ft.FontWeight.W_600,
         color=ft.Colors.GREY_400,
+        text_align=ft.TextAlign.CENTER,
     )
     placeholder_sub_text = ft.Text(
-        "Πατήστε «Έναρξη Κάμερας» για ζωντανή σάρωση QR & Barcodes (EAN, UPC, Code128)",
+        "Πατήστε «Έναρξη Κάμερας» για άνοιγμα του εγγενούς σαρωτή QR & Barcodes (EAN, UPC, Code128)"
+        if is_android
+        else "Πατήστε «Έναρξη Κάμερας» για ζωντανή σάρωση QR & Barcodes (EAN, UPC, Code128)",
         size=13,
         color=ft.Colors.GREY_500,
+        text_align=ft.TextAlign.CENTER,
     )
     camera_placeholder = ft.Container(
         content=ft.Column(
@@ -147,16 +192,17 @@ def main(page: ft.Page):
             alignment=ft.MainAxisAlignment.CENTER,
         ),
         alignment=ft.Alignment(0, 0),
-        width=640,
-        height=480,
+        width=cam_w,
+        height=cam_h,
+        padding=12,
         bgcolor="#141a29",
         border_radius=12,
         border=ft.Border.all(1, "#232f47"),
     )
     camera_stack_container = ft.Container(
         content=camera_placeholder,
-        width=640,
-        height=480,
+        width=cam_w,
+        height=cam_h,
         border_radius=12,
         alignment=ft.Alignment(0, 0),
     )
@@ -196,7 +242,7 @@ def main(page: ft.Page):
         """Forces immediate OS window repaint on Windows Desktop (1px resize nudge pattern)."""
         try:
             page.update()
-            if not getattr(page, "web", False):
+            if not is_android and not getattr(page, "web", False):
                 w = page.window.width
                 if w:
                     page.window.width = w + 1
@@ -254,7 +300,7 @@ def main(page: ft.Page):
         title_str = parsed.get("title", q_type)
         summary_str = parsed.get("summary", raw_text[:60])
         history_mgr.add_entry(raw_text, q_type, parsed.get("details"))
-        
+
         last_scan_banner.value = f"✅ {title_str}: {summary_str}"
         safe_update(last_scan_banner)
 
@@ -281,6 +327,48 @@ def main(page: ft.Page):
         on_scan=on_scan_detected,
     )
 
+    last_android_scan_ts = int(time.time() * 1000)
+
+    async def poll_android_scan_results():
+        """Background coroutine on Android that polls for native ZXing camera/file scan results."""
+        nonlocal last_android_scan_ts
+        while True:
+            try:
+                scan_data, new_ts = read_latest_android_scan_result(last_android_scan_ts)
+                if scan_data is not None:
+                    last_android_scan_ts = new_ts
+                    err = scan_data.get("error")
+                    code_val = (scan_data.get("code") or "").strip()
+                    fmt_val = (scan_data.get("format") or "QRCode").strip()
+                    if err == "NOT_FOUND":
+                        page.show_dialog(
+                            ft.SnackBar(
+                                content=ft.Text("Δεν εντοπίστηκε έγκυρο QR code ή Barcode στην επιλεγμένη εικόνα."),
+                                bgcolor=ft.Colors.RED_800,
+                            )
+                        )
+                    elif code_val:
+                        parsed = parse_qr_content(code_val, fmt_val)
+                        # Render a visual preview of the scanned code in the scanner box on Android
+                        try:
+                            is_ean = fmt_val.upper() in ("EAN_13", "EAN13") and len(code_val) in (12, 13)
+                            preview_bytes, _ = generate_qr_image(
+                                data=code_val,
+                                fill_color="#000000",
+                                back_color="#FFFFFF",
+                                code_type="EAN13" if is_ean else "QR",
+                            )
+                            if preview_bytes:
+                                camera_view.src = preview_bytes
+                                camera_stack_container.content = camera_view
+                                safe_update(camera_stack_container)
+                        except Exception:
+                            pass
+                        on_scan_detected(code_val, parsed)
+            except Exception as ex:
+                print(f"[AndroidPoll] Error: {ex}")
+            await asyncio.sleep(0.5)
+
     # ---------------------------------------------------------
     # 4. FILE PICKER FOR IMAGE UPLOAD & CLIPBOARD
     # ---------------------------------------------------------
@@ -294,12 +382,18 @@ def main(page: ft.Page):
         )
         if files and len(files) > 0:
             file_path = files[0].path
+            if not file_path:
+                return
             res = scanner_engine.scan_image_file(file_path)
             if res:
                 raw_text, parsed = res
                 on_scan_detected(raw_text, parsed)
                 tabs.selected_index = 1
                 page.update()
+            elif is_android:
+                clear_android_scan_results()
+                encoded_p = urllib.parse.quote(file_path, safe="")
+                open_external_url(f"{SCAN_FILE_URL_PREFIX}{encoded_p}")
             else:
                 page.show_dialog(
                     ft.SnackBar(
@@ -308,20 +402,34 @@ def main(page: ft.Page):
                     )
                 )
 
-    def scan_clipboard_click(e):
+    async def scan_clipboard_click(e):
         res = scanner_engine.scan_clipboard()
         if res:
             raw_text, parsed = res
             on_scan_detected(raw_text, parsed)
             tabs.selected_index = 1
             page.update()
-        else:
-            page.show_dialog(
-                ft.SnackBar(
-                    content=ft.Text("Δεν βρέθηκε εικόνα με QR code ή Barcode στο πρόχειρο (Clipboard)."),
-                    bgcolor=ft.Colors.ORANGE_800,
-                )
+            return
+
+        # Fallback: check if clipboard contains text (URL, barcode digits, vCard, Wi-Fi, JSON, etc.)
+        try:
+            clip_text = await clipboard_service.get()
+            if clip_text and clip_text.strip():
+                raw_text = clip_text.strip()
+                parsed = parse_qr_content(raw_text, "QRCode")
+                on_scan_detected(raw_text, parsed)
+                tabs.selected_index = 1
+                page.update()
+                return
+        except Exception as ex:
+            print(f"[Clipboard] Text fallback error: {ex}")
+
+        page.show_dialog(
+            ft.SnackBar(
+                content=ft.Text("Δεν βρέθηκε εικόνα ή περιεχόμενο QR/Barcode στο πρόχειρο (Clipboard)."),
+                bgcolor=ft.Colors.ORANGE_800,
             )
+        )
 
     # ---------------------------------------------------------
     # 5. UI CONTROLS & EVENT HANDLERS (Scanner Tab)
@@ -422,6 +530,10 @@ def main(page: ft.Page):
             await asyncio.sleep(0.015)
 
     def start_camera_click(e):
+        if is_android:
+            clear_android_scan_results()
+            open_external_url(SCAN_COMMAND_URL)
+            return
         if scanner_engine.is_running():
             return
         start_cam_btn.disabled = True
@@ -432,8 +544,12 @@ def main(page: ft.Page):
         scanner_engine.stop()
         camera_live_ring.visible = False
         camera_live_badge.visible = False
-        placeholder_status_text.value = "Η κάμερα είναι ανενεργή"
-        placeholder_sub_text.value = "Πατήστε «Έναρξη Κάμερας» για ζωντανή σάρωση QR & Barcodes (EAN, UPC, Code128)"
+        placeholder_status_text.value = "Έτοιμο για Σάρωση Κάμερας" if is_android else "Η κάμερα είναι ανενεργή"
+        placeholder_sub_text.value = (
+            "Πατήστε «Έναρξη Κάμερας» για άνοιγμα του εγγενούς σαρωτή QR & Barcodes (EAN, UPC, Code128)"
+            if is_android
+            else "Πατήστε «Έναρξη Κάμερας» για ζωντανή σάρωση QR & Barcodes (EAN, UPC, Code128)"
+        )
         camera_stack_container.content = camera_placeholder
         start_cam_btn.disabled = False
         stop_cam_btn.disabled = True
@@ -453,10 +569,7 @@ def main(page: ft.Page):
             if target_url and not target_url.lower().startswith("http"):
                 target_url = f"https://{target_url}"
             if target_url:
-                try:
-                    webbrowser.open(target_url)
-                except Exception as ex:
-                    print(f"[QuickAction URL] Error: {ex}")
+                open_external_url(target_url)
         elif q_type == "GEO":
             lat = details.get("latitude")
             lon = details.get("longitude")
@@ -466,13 +579,91 @@ def main(page: ft.Page):
             elif not maps_url:
                 clean_geo = raw_val[4:].split("?")[0] if raw_val.lower().startswith("geo:") else raw_val
                 maps_url = f"https://www.google.com/maps/search/?api=1&query={clean_geo}"
-            try:
-                webbrowser.open(maps_url)
-            except Exception as ex:
-                print(f"[QuickAction GEO] Error: {ex}")
+            open_external_url(maps_url)
         else:
             tabs.selected_index = 1
             page.update()
+
+    scanner_options_panel = ft.Container(
+        content=ft.Column(
+            [
+                ft.Text("Επιλογές Σάρωσης", size=16, weight=ft.FontWeight.W_600),
+                ft.Row([start_cam_btn, stop_cam_btn], spacing=10, wrap=True),
+                camera_live_badge,
+                ft.Divider(height=15, color="#232f47"),
+                ft.Button(
+                    content=ft.Row([ft.Icon(ft.Icons.UPLOAD_FILE), ft.Text("Φόρτωση Εικόνας...")], tight=True),
+                    on_click=pick_file_click,
+                    bgcolor="#1e293b",
+                    color=ft.Colors.WHITE,
+                ),
+                ft.Button(
+                    content=ft.Row([ft.Icon(ft.Icons.CONTENT_PASTE), ft.Text("Από Πρόχειρο (Clipboard)")], tight=True),
+                    on_click=scan_clipboard_click,
+                    bgcolor="#1e293b",
+                    color=ft.Colors.WHITE,
+                ),
+                ft.Divider(height=15, color="#232f47"),
+                ft.Row(
+                    [
+                        ft.Text("Εφέ & Ρυθμίσεις:", size=13, color=ft.Colors.GREY_400),
+                        sound_btn,
+                        flash_btn,
+                    ],
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Text("Τελευταίο Αποτέλεσμα:", size=12, color=ft.Colors.GREY_400),
+                            last_scan_banner,
+                            ft.Row(
+                                [
+                                    ft.Button(
+                                        content=ft.Text("Προβολή & Επεξεργασία"),
+                                        on_click=lambda _: setattr(tabs, "selected_index", 1) or page.update(),
+                                        bgcolor=ft.Colors.BLUE_700,
+                                        color=ft.Colors.WHITE,
+                                    ),
+                                    ft.IconButton(
+                                        icon=ft.Icons.BOLT,
+                                        icon_color=ft.Colors.AMBER_400,
+                                        bgcolor="#1e293b",
+                                        tooltip="Άμεση Ενέργεια (URL ➔ Browser, GPS ➔ Google Maps, Προϊόν/Λοιπά ➔ Προβολή & Επεξεργασία)",
+                                        on_click=lambda e: execute_quick_action_click(e),
+                                    ),
+                                ],
+                                spacing=8,
+                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            ),
+                        ],
+                        spacing=6,
+                    ),
+                    padding=12,
+                    border_radius=8,
+                    bgcolor="#0f172a",
+                    border=ft.Border.all(1, "#334155"),
+                ),
+            ],
+            spacing=12,
+        ),
+        padding=15,
+        width=None if is_android else 380,
+        bgcolor="#111827",
+        border_radius=12,
+        border=ft.Border.all(1, "#1f2937"),
+    )
+
+    scanner_main_layout: ft.Control = (
+        ft.Column([camera_stack_container, scanner_options_panel], spacing=14)
+        if is_android
+        else ft.Row(
+            [camera_stack_container, scanner_options_panel],
+            alignment=ft.MainAxisAlignment.START,
+            vertical_alignment=ft.CrossAxisAlignment.START,
+            spacing=20,
+        )
+    )
 
     scanner_tab_view = ft.Container(
         content=ft.Column(
@@ -480,7 +671,12 @@ def main(page: ft.Page):
                 ft.Row(
                     [
                         ft.Icon(ft.Icons.QR_CODE_SCANNER, color=ft.Colors.BLUE_400, size=28),
-                        ft.Text("Ζωντανός Σαρωτής QR & Barcodes (1D / 2D)", size=22, weight=ft.FontWeight.BOLD),
+                        ft.Text(
+                            "Ζωντανός Σαρωτής QR & Barcodes (1D / 2D)",
+                            size=18 if is_android else 22,
+                            weight=ft.FontWeight.BOLD,
+                            expand=True,
+                        ),
                     ],
                     alignment=ft.MainAxisAlignment.START,
                 ),
@@ -490,88 +686,12 @@ def main(page: ft.Page):
                     color=ft.Colors.GREY_400,
                 ),
                 ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
-                ft.Row(
-                    [
-                        camera_stack_container,
-                        ft.Container(
-                            content=ft.Column(
-                                [
-                                    ft.Text("Επιλογές Σάρωσης", size=16, weight=ft.FontWeight.W_600),
-                                    ft.Row([start_cam_btn, stop_cam_btn], spacing=10),
-                                    camera_live_badge,
-                                    ft.Divider(height=15, color="#232f47"),
-                                    ft.Button(
-                                        content=ft.Row([ft.Icon(ft.Icons.UPLOAD_FILE), ft.Text("Φόρτωση Εικόνας...")], tight=True),
-                                        on_click=pick_file_click,
-                                        bgcolor="#1e293b",
-                                        color=ft.Colors.WHITE,
-                                    ),
-                                    ft.Button(
-                                        content=ft.Row([ft.Icon(ft.Icons.CONTENT_PASTE), ft.Text("Από Πρόχειρο (Clipboard)")], tight=True),
-                                        on_click=scan_clipboard_click,
-                                        bgcolor="#1e293b",
-                                        color=ft.Colors.WHITE,
-                                    ),
-                                    ft.Divider(height=15, color="#232f47"),
-                                    ft.Row(
-                                        [
-                                            ft.Text("Εφέ & Ρυθμίσεις:", size=13, color=ft.Colors.GREY_400),
-                                            sound_btn,
-                                            flash_btn,
-                                        ],
-                                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                                    ),
-                                    ft.Container(
-                                        content=ft.Column(
-                                            [
-                                                ft.Text("Τελευταίο Αποτέλεσμα:", size=12, color=ft.Colors.GREY_400),
-                                                last_scan_banner,
-                                                ft.Row(
-                                                    [
-                                                        ft.Button(
-                                                            content=ft.Text("Προβολή & Επεξεργασία"),
-                                                            on_click=lambda _: setattr(tabs, "selected_index", 1) or page.update(),
-                                                            bgcolor=ft.Colors.BLUE_700,
-                                                            color=ft.Colors.WHITE,
-                                                        ),
-                                                        ft.IconButton(
-                                                            icon=ft.Icons.BOLT,
-                                                            icon_color=ft.Colors.AMBER_400,
-                                                            bgcolor="#1e293b",
-                                                            tooltip="Άμεση Ενέργεια (URL ➔ Browser, GPS ➔ Google Maps, Προϊόν/Λοιπά ➔ Προβολή & Επεξεργασία)",
-                                                            on_click=lambda e: execute_quick_action_click(e),
-                                                        ),
-                                                    ],
-                                                    spacing=8,
-                                                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                                                ),
-                                            ],
-                                            spacing=6,
-                                        ),
-                                        padding=12,
-                                        border_radius=8,
-                                        bgcolor="#0f172a",
-                                        border=ft.Border.all(1, "#334155"),
-                                    ),
-                                ],
-                                spacing=12,
-                            ),
-                            padding=15,
-                            width=380,
-                            bgcolor="#111827",
-                            border_radius=12,
-                            border=ft.Border.all(1, "#1f2937"),
-                        ),
-                    ],
-                    alignment=ft.MainAxisAlignment.START,
-                    vertical_alignment=ft.CrossAxisAlignment.START,
-                    spacing=20,
-                ),
+                scanner_main_layout,
             ],
             scroll=ft.ScrollMode.AUTO,
             spacing=10,
         ),
-        padding=20,
+        padding=14 if is_android else 20,
     )
 
     # ---------------------------------------------------------
@@ -599,35 +719,25 @@ def main(page: ft.Page):
         height=150,
     )
 
-    # In-app WebView preview - supported on Android, iOS, macOS, Web
-    supports_webview = bool(
-        page.web
-        or page.platform in [ft.PagePlatform.ANDROID, ft.PagePlatform.IOS, ft.PagePlatform.MACOS]
+    # In-app WebView container info banner
+    webview_control = None
+    webview_inner: ft.Control = ft.Container(
+        content=ft.Row(
+            [
+                ft.Icon(ft.Icons.WEB, color=ft.Colors.BLUE_400, size=22),
+                ft.Text(
+                    "Οι σύνδεσμοι ιστοσελίδων ανοίγουν απευθείας στον προεπιλεγμένο φυλλομετρητή (Browser).",
+                    size=13,
+                    color=ft.Colors.GREY_300,
+                    expand=True,
+                ),
+            ],
+            spacing=10,
+        ),
+        padding=12,
+        bgcolor="#111827",
+        border_radius=8,
     )
-    if supports_webview:
-        webview_control = fwv.WebView(
-            url="https://www.skroutz.gr",
-            height=240,
-        )
-        webview_inner: ft.Control = webview_control
-    else:
-        webview_control = None
-        webview_inner = ft.Container(
-            content=ft.Row(
-                [
-                    ft.Icon(ft.Icons.WEB, color=ft.Colors.BLUE_400, size=22),
-                    ft.Text(
-                        "Οι σύνδεσμοι ιστοσελίδων ανοίγουν απευθείας στον προεπιλεγμένο φυλλομετρητή (Browser).",
-                        size=13,
-                        color=ft.Colors.GREY_300,
-                    ),
-                ],
-                spacing=10,
-            ),
-            padding=12,
-            bgcolor="#111827",
-            border_radius=8,
-        )
 
     webview_container = ft.Container(
         content=webview_inner,
@@ -655,20 +765,11 @@ def main(page: ft.Page):
         details = current_result.get("details", {})
         lookup_url = details.get("lookup_url", "")
         if url.startswith("http"):
-            try:
-                webbrowser.open(url)
-            except Exception as ex:
-                print(f"[LaunchUrl] Error: {ex}")
+            open_external_url(url)
         elif lookup_url:
-            try:
-                webbrowser.open(lookup_url)
-            except Exception as ex:
-                print(f"[LaunchUrl] Error: {ex}")
+            open_external_url(lookup_url)
         else:
-            try:
-                webbrowser.open(f"https://www.google.com/search?q={url}")
-            except Exception as ex:
-                print(f"[LaunchUrl] Error: {ex}")
+            open_external_url(f"https://www.google.com/search?q={urllib.parse.quote(url)}")
 
     result_summary_text = ft.Text(
         "Κωδικός Προϊόντος: 5201054001050 • Προέλευση: Ελλάδα 🇬🇷 (GS1 Association Greece)",
@@ -678,29 +779,23 @@ def main(page: ft.Page):
     )
     smart_details_column = ft.Column(
         [
-            ft.Row([ft.Text("• Κατηγορία:", size=13, weight=ft.FontWeight.BOLD, color=ft.Colors.CYAN_300), ft.Text("Εμπορικό Προϊόν Λιανικής", size=13, color=ft.Colors.WHITE)]),
-            ft.Row([ft.Text("• Πρότυπο Barcode:", size=13, weight=ft.FontWeight.BOLD, color=ft.Colors.CYAN_300), ft.Text("EAN-13", size=13, color=ft.Colors.WHITE)]),
-            ft.Row([ft.Text("• Κωδικός GTIN / EAN:", size=13, weight=ft.FontWeight.BOLD, color=ft.Colors.CYAN_300), ft.Text("5201054001050", size=13, color=ft.Colors.WHITE)]),
-            ft.Row([ft.Text("• Χώρα / Προέλευση (GS1):", size=13, weight=ft.FontWeight.BOLD, color=ft.Colors.CYAN_300), ft.Text("Ελλάδα 🇬🇷 (GS1 Association Greece)", size=13, color=ft.Colors.WHITE)]),
+            ft.Row([ft.Text("• Κατηγορία:", size=13, weight=ft.FontWeight.BOLD, color=ft.Colors.CYAN_300), ft.Text("Εμπορικό Προϊόν Λιανικής", size=13, color=ft.Colors.WHITE)], wrap=True),
+            ft.Row([ft.Text("• Πρότυπο Barcode:", size=13, weight=ft.FontWeight.BOLD, color=ft.Colors.CYAN_300), ft.Text("EAN-13", size=13, color=ft.Colors.WHITE)], wrap=True),
+            ft.Row([ft.Text("• Κωδικός GTIN / EAN:", size=13, weight=ft.FontWeight.BOLD, color=ft.Colors.CYAN_300), ft.Text("5201054001050", size=13, color=ft.Colors.WHITE)], wrap=True),
+            ft.Row([ft.Text("• Χώρα / Προέλευση (GS1):", size=13, weight=ft.FontWeight.BOLD, color=ft.Colors.CYAN_300), ft.Text("Ελλάδα 🇬🇷 (GS1 Association Greece)", size=13, color=ft.Colors.WHITE)], wrap=True),
         ],
         spacing=6,
     )
 
     def open_skroutz_click(e):
         raw_val = (result_raw_text.value or "").strip()
-        skroutz_url = current_result.get("details", {}).get("skroutz_url") or f"https://www.skroutz.gr/search?keyphrase={raw_val}"
-        try:
-            webbrowser.open(skroutz_url)
-        except Exception as ex:
-            print(f"[Skroutz] Error: {ex}")
+        skroutz_url = current_result.get("details", {}).get("skroutz_url") or f"https://www.skroutz.gr/search?keyphrase={urllib.parse.quote(raw_val)}"
+        open_external_url(skroutz_url)
 
     def open_off_click(e):
         raw_val = (result_raw_text.value or "").strip()
-        off_url = current_result.get("details", {}).get("openfoodfacts_url") or f"https://world.openfoodfacts.org/product/{raw_val}"
-        try:
-            webbrowser.open(off_url)
-        except Exception as ex:
-            print(f"[OpenFoodFacts] Error: {ex}")
+        off_url = current_result.get("details", {}).get("openfoodfacts_url") or f"https://world.openfoodfacts.org/product/{urllib.parse.quote(raw_val)}"
+        open_external_url(off_url)
 
     copy_btn = ft.Button(
         content=ft.Row([ft.Icon(ft.Icons.COPY), ft.Text("Αντιγραφή")], tight=True),
@@ -894,6 +989,7 @@ def main(page: ft.Page):
         gapless_playback=True,
     )
     current_pil_qr = None
+    current_png_bytes: Optional[bytes] = None
 
     # Color & Size State
     qr_fg_color = "#000000"
@@ -974,7 +1070,7 @@ def main(page: ft.Page):
             return (0, 0, 0)
 
     def update_generated_qr(e=None):
-        nonlocal current_pil_qr
+        nonlocal current_pil_qr, current_png_bytes
         text = gen_data_input.value or ""
         selected_type = gen_format_dropdown.value or "QR"
         selected_ecc = gen_ecc_dropdown.value or "M"
@@ -991,6 +1087,7 @@ def main(page: ft.Page):
         )
         if png_bytes:
             gen_qr_preview.src = png_bytes
+            current_png_bytes = png_bytes
             current_pil_qr = pil_img
             preview_bg_container.bgcolor = qr_bg_color
             safe_update(gen_qr_preview)
@@ -1221,8 +1318,9 @@ def main(page: ft.Page):
                         ft.Icon(ft.Icons.MAP, color=ft.Colors.GREEN_400, size=24),
                         ft.Text(
                             "Διαδραστικός Χάρτης Επιλογής Τοποθεσίας (Click-on-Map Geo QR):",
-                            size=16,
+                            size=15 if is_android else 16,
                             weight=ft.FontWeight.BOLD,
+                            expand=True,
                         ),
                     ],
                     spacing=8,
@@ -1239,7 +1337,7 @@ def main(page: ft.Page):
                         gen_map_coords_text,
                         ft.Button(
                             content=ft.Row([ft.Icon(ft.Icons.OPEN_IN_NEW, size=15), ft.Text("Δοκιμή στο Google Maps", size=12)], tight=True),
-                            on_click=lambda _: webbrowser.open(
+                            on_click=lambda _: open_external_url(
                                 f"https://www.google.com/maps?q={map_marker.coordinates.latitude},{map_marker.coordinates.longitude}"
                             ),
                             bgcolor=ft.Colors.TEAL_800,
@@ -1258,7 +1356,7 @@ def main(page: ft.Page):
             ],
             spacing=10,
         ),
-        width=1010,
+        width=None if is_android else 1010,
         padding=16,
         bgcolor="#111827",
         border_radius=12,
@@ -1297,23 +1395,161 @@ def main(page: ft.Page):
                 file_name="spyqr_code.png",
                 file_type=ft.FilePickerFileType.IMAGE,
                 allowed_extensions=["png"],
+                src_bytes=current_png_bytes,
             )
         except Exception:
             save_path = os.path.join(os.path.expanduser("~"), "spyqr_code.png")
 
         if save_path:
-            if not save_path.lower().endswith(".png"):
-                save_path += ".png"
-            saved = save_qr_to_file(current_pil_qr, save_path)
-            if saved:
-                page.show_dialog(
-                    ft.SnackBar(
-                        content=ft.Text(f"Ο κώδικας αποθηκεύτηκε επιτυχώς στο: {save_path}"),
-                        bgcolor=ft.Colors.GREEN_700,
-                    )
+            if not is_android:
+                if not save_path.lower().endswith(".png"):
+                    save_path += ".png"
+                save_qr_to_file(current_pil_qr, save_path)
+            page.show_dialog(
+                ft.SnackBar(
+                    content=ft.Text(f"Ο κώδικας αποθηκεύτηκε επιτυχώς: {save_path}"),
+                    bgcolor=ft.Colors.GREEN_700,
                 )
+            )
 
     update_generated_qr()
+
+    generator_form_container = ft.Container(
+        content=ft.Column(
+            [
+                ft.Row([gen_format_dropdown, gen_ecc_dropdown], spacing=12, wrap=True),
+                gen_data_input,
+                ft.Row(
+                    [
+                        ft.Text("Γρήγορα Πρότυπα:", size=12, color=ft.Colors.GREY_400),
+                        ft.Button(
+                            content=ft.Row([ft.Icon(ft.Icons.WIFI, size=16), ft.Text("Wi-Fi", size=12)], tight=True),
+                            on_click=lambda _: insert_template_click("WIFI"),
+                            bgcolor="#1e293b",
+                            color=ft.Colors.WHITE,
+                        ),
+                        ft.Button(
+                            content=ft.Row([ft.Icon(ft.Icons.CONTACT_MAIL, size=16), ft.Text("Επαφή vCard", size=12)], tight=True),
+                            on_click=lambda _: insert_template_click("VCARD"),
+                            bgcolor="#1e293b",
+                            color=ft.Colors.WHITE,
+                        ),
+                        ft.Button(
+                            content=ft.Row([ft.Icon(ft.Icons.LOCATION_ON, size=16), ft.Text("Συντεταγμένες GPS", size=12)], tight=True),
+                            on_click=lambda _: insert_template_click("GEO"),
+                            bgcolor="#1e293b",
+                            color=ft.Colors.WHITE,
+                        ),
+                        ft.Button(
+                            content=ft.Row([ft.Icon(ft.Icons.SHOPPING_BAG, size=16), ft.Text("Προϊόν EAN-13", size=12)], tight=True),
+                            on_click=lambda _: insert_template_click("EAN13"),
+                            bgcolor="#1e293b",
+                            color=ft.Colors.WHITE,
+                        ),
+                    ],
+                    spacing=8,
+                    wrap=True,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                ft.Divider(height=10, color="#1e293b"),
+                ft.Text("Ρυθμιστικά Μεγέθους & Περιθωρίου:", size=14, weight=ft.FontWeight.W_600),
+                ft.Row([box_size_label, box_size_slider], vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                ft.Row([border_size_label, border_size_slider], vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                ft.Divider(height=10, color="#1e293b"),
+                ft.Text("Επιλογή Χρώματος & Ρυθμιστικά RGB:", size=14, weight=ft.FontWeight.W_600),
+                ft.Row(
+                    [
+                        fg_color_swatch,
+                        fg_hex_input,
+                        bg_color_dropdown,
+                    ],
+                    spacing=12,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    wrap=True,
+                ),
+                ft.Row(
+                    [
+                        ft.Text("Έτοιμα Χρώματα:", size=12, color=ft.Colors.GREY_400),
+                        preset_swatches_row,
+                    ],
+                    spacing=10,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    wrap=True,
+                ),
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Row([r_val_label, r_slider], vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                            ft.Row([g_val_label, g_slider], vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                            ft.Row([b_val_label, b_slider], vertical_alignment=ft.CrossAxisAlignment.CENTER),
+                        ],
+                        spacing=2,
+                    ),
+                    padding=ft.Padding.symmetric(horizontal=10, vertical=6),
+                    bgcolor="#0f172a",
+                    border_radius=8,
+                    border=ft.Border.all(1, "#232f47"),
+                ),
+                ft.ExpansionTile(
+                    title=ft.Text("Σύνθετη Παλέτα Χρωμάτων (Φάσμα HSV / HEX)", size=13, color=ft.Colors.CYAN_300),
+                    expanded=False,
+                    controls=[
+                        ft.Container(
+                            content=color_picker_fg,
+                            padding=10,
+                            alignment=ft.Alignment(0, 0),
+                        )
+                    ],
+                ),
+            ],
+            spacing=10,
+        ),
+        width=None if is_android else 640,
+        padding=16,
+        bgcolor="#111827",
+        border_radius=12,
+        border=ft.Border.all(1, "#1f2937"),
+    )
+
+    generator_preview_container = ft.Container(
+        content=ft.Column(
+            [
+                ft.Text("Ζωντανή Προεπισκόπηση", size=16, weight=ft.FontWeight.W_600),
+                preview_bg_container,
+                ft.Button(
+                    content=ft.Row([ft.Icon(ft.Icons.DOWNLOAD), ft.Text("Αποθήκευση Εικόνας (PNG)")], tight=True),
+                    on_click=save_qr_dialog_click,
+                    bgcolor=ft.Colors.PURPLE_700,
+                    color=ft.Colors.WHITE,
+                ),
+                ft.Text(
+                    "Ο κώδικας ενημερώνεται αυτόματα σε κάθε αλλαγή!",
+                    size=12,
+                    color=ft.Colors.GREY_400,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+            ],
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=15,
+        ),
+        width=None if is_android else 350,
+        padding=20,
+        bgcolor="#111827",
+        border_radius=12,
+        border=ft.Border.all(1, "#1f2937"),
+        alignment=ft.Alignment(0, 0),
+    )
+
+    generator_top_layout: ft.Control = (
+        ft.Column([generator_preview_container, generator_form_container], spacing=14)
+        if is_android
+        else ft.Row(
+            [generator_form_container, generator_preview_container],
+            alignment=ft.MainAxisAlignment.START,
+            vertical_alignment=ft.CrossAxisAlignment.START,
+            spacing=20,
+        )
+    )
 
     generator_tab_view = ft.Container(
         content=ft.Column(
@@ -1321,7 +1557,12 @@ def main(page: ft.Page):
                 ft.Row(
                     [
                         ft.Icon(ft.Icons.CREATE, color=ft.Colors.PURPLE_400, size=28),
-                        ft.Text("Δημιουργός QR Codes & Barcodes", size=22, weight=ft.FontWeight.BOLD),
+                        ft.Text(
+                            "Δημιουργός QR Codes & Barcodes",
+                            size=18 if is_android else 22,
+                            weight=ft.FontWeight.BOLD,
+                            expand=True,
+                        ),
                     ],
                 ),
                 ft.Text(
@@ -1330,138 +1571,14 @@ def main(page: ft.Page):
                     color=ft.Colors.GREY_400,
                 ),
                 ft.Divider(height=6, color=ft.Colors.TRANSPARENT),
-                ft.Row(
-                    [
-                        ft.Container(
-                            content=ft.Column(
-                                [
-                                    ft.Row([gen_format_dropdown, gen_ecc_dropdown], spacing=12, wrap=True),
-                                    gen_data_input,
-                                    ft.Row(
-                                        [
-                                            ft.Text("Γρήγορα Πρότυπα:", size=12, color=ft.Colors.GREY_400),
-                                            ft.Button(
-                                                content=ft.Row([ft.Icon(ft.Icons.WIFI, size=16), ft.Text("Wi-Fi", size=12)], tight=True),
-                                                on_click=lambda _: insert_template_click("WIFI"),
-                                                bgcolor="#1e293b",
-                                                color=ft.Colors.WHITE,
-                                            ),
-                                            ft.Button(
-                                                content=ft.Row([ft.Icon(ft.Icons.CONTACT_MAIL, size=16), ft.Text("Επαφή vCard", size=12)], tight=True),
-                                                on_click=lambda _: insert_template_click("VCARD"),
-                                                bgcolor="#1e293b",
-                                                color=ft.Colors.WHITE,
-                                            ),
-                                            ft.Button(
-                                                content=ft.Row([ft.Icon(ft.Icons.LOCATION_ON, size=16), ft.Text("Συντεταγμένες GPS", size=12)], tight=True),
-                                                on_click=lambda _: insert_template_click("GEO"),
-                                                bgcolor="#1e293b",
-                                                color=ft.Colors.WHITE,
-                                            ),
-                                            ft.Button(
-                                                content=ft.Row([ft.Icon(ft.Icons.SHOPPING_BAG, size=16), ft.Text("Προϊόν EAN-13", size=12)], tight=True),
-                                                on_click=lambda _: insert_template_click("EAN13"),
-                                                bgcolor="#1e293b",
-                                                color=ft.Colors.WHITE,
-                                            ),
-                                        ],
-                                        spacing=8,
-                                        wrap=True,
-                                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                                    ),
-                                    ft.Divider(height=10, color="#1e293b"),
-                                    ft.Text("Ρυθμιστικά Μεγέθους & Περιθωρίου:", size=14, weight=ft.FontWeight.W_600),
-                                    ft.Row([box_size_label, box_size_slider], vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                                    ft.Row([border_size_label, border_size_slider], vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                                    ft.Divider(height=10, color="#1e293b"),
-                                    ft.Text("Επιλογή Χρώματος & Ρυθμιστικά RGB:", size=14, weight=ft.FontWeight.W_600),
-                                    ft.Row(
-                                        [
-                                            fg_color_swatch,
-                                            fg_hex_input,
-                                            bg_color_dropdown,
-                                        ],
-                                        spacing=12,
-                                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                                        wrap=True,
-                                    ),
-                                    ft.Row(
-                                        [
-                                            ft.Text("Έτοιμα Χρώματα:", size=12, color=ft.Colors.GREY_400),
-                                            preset_swatches_row,
-                                        ],
-                                        spacing=10,
-                                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                                    ),
-                                    ft.Container(
-                                        content=ft.Column(
-                                            [
-                                                ft.Row([r_val_label, r_slider], vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                                                ft.Row([g_val_label, g_slider], vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                                                ft.Row([b_val_label, b_slider], vertical_alignment=ft.CrossAxisAlignment.CENTER),
-                                            ],
-                                            spacing=2,
-                                        ),
-                                        padding=ft.Padding.symmetric(horizontal=10, vertical=6),
-                                        bgcolor="#0f172a",
-                                        border_radius=8,
-                                        border=ft.Border.all(1, "#232f47"),
-                                    ),
-                                    ft.ExpansionTile(
-                                        title=ft.Text("Σύνθετη Παλέτα Χρωμάτων (Φάσμα HSV / HEX)", size=13, color=ft.Colors.CYAN_300),
-                                        expanded=False,
-                                        controls=[
-                                            ft.Container(
-                                                content=color_picker_fg,
-                                                padding=10,
-                                                alignment=ft.Alignment(0, 0),
-                                            )
-                                        ],
-                                    ),
-                                ],
-                                spacing=10,
-                            ),
-                            width=640,
-                            padding=16,
-                            bgcolor="#111827",
-                            border_radius=12,
-                            border=ft.Border.all(1, "#1f2937"),
-                        ),
-                        ft.Container(
-                            content=ft.Column(
-                                [
-                                    ft.Text("Ζωντανή Προεπισκόπηση", size=16, weight=ft.FontWeight.W_600),
-                                    preview_bg_container,
-                                    ft.Button(
-                                        content=ft.Row([ft.Icon(ft.Icons.DOWNLOAD), ft.Text("Αποθήκευση Εικόνας (PNG)")], tight=True),
-                                        on_click=save_qr_dialog_click,
-                                        bgcolor=ft.Colors.PURPLE_700,
-                                        color=ft.Colors.WHITE,
-                                    ),
-                                    ft.Text("Ο κώδικας ενημερώνεται αυτόματα σε κάθε αλλαγή!", size=12, color=ft.Colors.GREY_400),
-                                ],
-                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                spacing=15,
-                            ),
-                            width=350,
-                            padding=20,
-                            bgcolor="#111827",
-                            border_radius=12,
-                            border=ft.Border.all(1, "#1f2937"),
-                            alignment=ft.Alignment(0, 0),
-                        ),
-                    ],
-                    alignment=ft.MainAxisAlignment.START,
-                    vertical_alignment=ft.CrossAxisAlignment.START,
-                    spacing=20,
-                ),
+                generator_top_layout,
                 ft.Divider(height=6, color=ft.Colors.TRANSPARENT),
                 map_container,
             ],
             scroll=ft.ScrollMode.AUTO,
             spacing=10,
         ),
-        padding=20,
+        padding=14 if is_android else 20,
     )
 
     # ---------------------------------------------------------
@@ -1470,7 +1587,7 @@ def main(page: ft.Page):
     history_search_input = ft.TextField(
         hint_text="Αναζήτηση στο ιστορικό...",
         prefix_icon=ft.Icons.SEARCH,
-        width=300,
+        width=220 if is_android else 300,
         height=40,
     )
 
@@ -1479,7 +1596,7 @@ def main(page: ft.Page):
             fdt.DataColumn2(label=ft.Text("Ημερομηνία / Ώρα"), size=fdt.DataColumnSize.M),
             fdt.DataColumn2(label=ft.Text("Τύπος"), size=fdt.DataColumnSize.S),
             fdt.DataColumn2(label=ft.Text("Περιεχόμενο"), size=fdt.DataColumnSize.L),
-            fdt.DataColumn2(label=ft.Text("Ενέργειες"), size=fdt.DataColumnSize.S),
+            fdt.DataColumn2(label=ft.Text("Ενέργειες"), size=fdt.DataColumnSize.M),
         ],
         rows=[],
         border=ft.Border.all(1, "#232f47"),
@@ -1504,6 +1621,21 @@ def main(page: ft.Page):
                     update_result_tab(parsed)
                     tabs.selected_index = 1
                     page.update()
+                return handler
+
+            def make_copy_handler(target_raw):
+                def handler(e):
+                    try:
+                        page.run_task(clipboard_service.set, target_raw)
+                    except Exception:
+                        pass
+                    page.show_dialog(
+                        ft.SnackBar(
+                            content=ft.Text("Αντιγράφηκε στο πρόχειρο!"),
+                            bgcolor=ft.Colors.GREEN_700,
+                            duration=1500,
+                        )
+                    )
                 return handler
 
             def make_delete_handler(target_id):
@@ -1536,6 +1668,13 @@ def main(page: ft.Page):
                                         on_click=make_view_handler(item),
                                     ),
                                     ft.IconButton(
+                                        icon=ft.Icons.COPY,
+                                        icon_size=17,
+                                        icon_color=ft.Colors.CYAN_300,
+                                        tooltip="Αντιγραφή",
+                                        on_click=make_copy_handler(raw),
+                                    ),
+                                    ft.IconButton(
                                         icon=ft.Icons.DELETE_OUTLINE,
                                         icon_size=18,
                                         icon_color=ft.Colors.RED_400,
@@ -1555,6 +1694,55 @@ def main(page: ft.Page):
 
     history_search_input.on_change = lambda _: refresh_history_tab()
 
+    async def export_history_csv_click(e):
+        if not history_mgr.items:
+            page.show_dialog(
+                ft.SnackBar(
+                    content=ft.Text("Το ιστορικό είναι κενό."),
+                    bgcolor=ft.Colors.ORANGE_800,
+                )
+            )
+            return
+
+        sio = io.StringIO()
+        writer = csv.writer(sio)
+        writer.writerow(["ID", "Timestamp", "Type", "Raw_Data"])
+        for it in history_mgr.items:
+            writer.writerow([
+                it.get("id", ""),
+                it.get("timestamp_str", ""),
+                it.get("qr_type", ""),
+                it.get("raw_data", ""),
+            ])
+        csv_bytes = ("\ufeff" + sio.getvalue()).encode("utf-8")
+
+        try:
+            save_path = await file_picker.save_file(
+                dialog_title="Εξαγωγή Ιστορικού σε CSV",
+                file_name="spyqr_history.csv",
+                file_type=ft.FilePickerFileType.CUSTOM,
+                allowed_extensions=["csv"],
+                src_bytes=csv_bytes,
+            )
+        except Exception:
+            save_path = os.path.join(os.path.expanduser("~"), "spyqr_history.csv")
+
+        if save_path:
+            if not is_android:
+                if not save_path.lower().endswith(".csv"):
+                    save_path += ".csv"
+                try:
+                    with open(save_path, "wb") as f:
+                        f.write(csv_bytes)
+                except Exception as ex:
+                    print(f"[CSV Export] Error: {ex}")
+            page.show_dialog(
+                ft.SnackBar(
+                    content=ft.Text(f"Το ιστορικό εξήχθη επιτυχώς σε CSV: {save_path}"),
+                    bgcolor=ft.Colors.GREEN_700,
+                )
+            )
+
     def clear_history_click(e):
         history_mgr.clear_all()
         refresh_history_tab()
@@ -1573,24 +1761,39 @@ def main(page: ft.Page):
                 ft.Row(
                     [
                         ft.Icon(ft.Icons.HISTORY, color=ft.Colors.TEAL_400, size=28),
-                        ft.Text("Ιστορικό Σαρώσεων", size=22, weight=ft.FontWeight.BOLD),
+                        ft.Text("Ιστορικό Σαρώσεων", size=18 if is_android else 22, weight=ft.FontWeight.BOLD),
                     ],
                 ),
                 ft.Row(
                     [
                         history_search_input,
-                        ft.Button(
-                            content=ft.Row([ft.Icon(ft.Icons.DELETE_FOREVER), ft.Text("Καθαρισμός Όλων")], tight=True),
-                            on_click=clear_history_click,
-                            bgcolor="#1e293b",
-                            color=ft.Colors.RED_300,
+                        ft.Row(
+                            [
+                                ft.Button(
+                                    content=ft.Row([ft.Icon(ft.Icons.FILE_DOWNLOAD, size=18), ft.Text("Εξαγωγή CSV")], tight=True),
+                                    on_click=export_history_csv_click,
+                                    bgcolor=ft.Colors.TEAL_800,
+                                    color=ft.Colors.WHITE,
+                                ),
+                                ft.Button(
+                                    content=ft.Row([ft.Icon(ft.Icons.DELETE_FOREVER, size=18), ft.Text("Καθαρισμός Όλων")], tight=True),
+                                    on_click=clear_history_click,
+                                    bgcolor="#1e293b",
+                                    color=ft.Colors.RED_300,
+                                ),
+                            ],
+                            spacing=8,
+                            wrap=True,
                         ),
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    wrap=True,
+                    spacing=10,
                 ),
                 ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
                 ft.Container(
                     content=history_datatable,
+                    height=460,
                     bgcolor="#111827",
                     border_radius=8,
                     padding=10,
@@ -1599,7 +1802,7 @@ def main(page: ft.Page):
             scroll=ft.ScrollMode.AUTO,
             spacing=10,
         ),
-        padding=20,
+        padding=14 if is_android else 20,
     )
 
     # ---------------------------------------------------------
@@ -1630,14 +1833,13 @@ def main(page: ft.Page):
                 value=1,
                 title="Προϊόντα (1)",
                 color=ft.Colors.BLUE_400,
-                radius=110,
-                title_style=ft.TextStyle(size=13, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                radius=95 if is_android else 110,
+                title_style=ft.TextStyle(size=12 if is_android else 13, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
             ),
         ],
         sections_space=3,
-        center_space_radius=55,
-        height=320,
-        expand=True,
+        center_space_radius=45 if is_android else 55,
+        height=260 if is_android else 320,
     )
 
     pie_legend_column = ft.Column(spacing=8)
@@ -1651,7 +1853,7 @@ def main(page: ft.Page):
                         from_y=0,
                         to_y=1,
                         color=ft.Colors.BLUE_400,
-                        width=38,
+                        width=32 if is_android else 38,
                         border_radius=6,
                     )
                 ],
@@ -1667,15 +1869,14 @@ def main(page: ft.Page):
             label_size=36,
             show_labels=True,
             labels=[
-                fc.ChartAxisLabel(value=0, label=ft.Text("PRODUCT", size=12, weight=ft.FontWeight.BOLD)),
+                fc.ChartAxisLabel(value=0, label=ft.Text("PRODUCT", size=11 if is_android else 12, weight=ft.FontWeight.BOLD)),
             ],
         ),
         horizontal_grid_lines=fc.ChartGridLines(interval=1, color="#334155", width=1),
         min_y=0,
         max_y=5,
         interactive=True,
-        height=340,
-        expand=True,
+        height=300 if is_android else 340,
     )
 
     stat_total_scans = ft.Text("0", size=30, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_400)
@@ -1724,8 +1925,8 @@ def main(page: ft.Page):
                     value=count,
                     title=f"{gr_label}\n{count} ({pct:.0f}%)",
                     color=col,
-                    radius=115,
-                    title_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                    radius=95 if is_android else 115,
+                    title_style=ft.TextStyle(size=11 if is_android else 12, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
                 )
             )
             bar_groups.append(
@@ -1736,7 +1937,7 @@ def main(page: ft.Page):
                             from_y=0,
                             to_y=count,
                             color=col,
-                            width=42,
+                            width=32 if is_android else 42,
                             border_radius=6,
                             tooltip=f"{gr_label} ({q_type}): {count} σαρώσεις ({pct:.1f}%)",
                         )
@@ -1747,7 +1948,7 @@ def main(page: ft.Page):
                 fc.ChartAxisLabel(
                     value=idx,
                     label=ft.Container(
-                        content=ft.Text(f"{gr_label}", size=12, weight=ft.FontWeight.BOLD),
+                        content=ft.Text(f"{gr_label}", size=11 if is_android else 12, weight=ft.FontWeight.BOLD),
                         padding=ft.Padding.only(top=6),
                     ),
                 )
@@ -1761,6 +1962,7 @@ def main(page: ft.Page):
                         ft.Text(f"{count} σαρώσεις ({pct:.1f}%)", size=13, color="#475569" if is_light else ft.Colors.GREY_400),
                     ],
                     spacing=8,
+                    wrap=True,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 )
             )
@@ -1772,7 +1974,7 @@ def main(page: ft.Page):
                     value=1,
                     title="Χωρίς Δεδομένα",
                     color=ft.Colors.GREY_700,
-                    radius=110,
+                    radius=95 if is_android else 110,
                     title_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
                 )
             ]
@@ -1802,13 +2004,44 @@ def main(page: ft.Page):
         safe_update(pie_legend_column)
         safe_update(bar_chart_control)
 
+    pie_chart_box = ft.Container(
+        content=pie_chart_control,
+        width=None if is_android else 460,
+        height=275 if is_android else 330,
+        alignment=ft.Alignment(0, 0),
+    )
+    pie_legend_box = ft.Container(
+        content=ft.Column(
+            [
+                ft.Text("Υπόμνημα Κατηγοριών:", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.CYAN_300),
+                pie_legend_column,
+            ],
+            spacing=10,
+        ),
+        padding=16,
+        bgcolor="#0f172a",
+        border_radius=10,
+        border=ft.Border.all(1, "#232f47"),
+        expand=False if is_android else True,
+    )
+
+    pie_section_layout: ft.Control = (
+        ft.Column([pie_chart_box, pie_legend_box], spacing=14)
+        if is_android
+        else ft.Row(
+            [pie_chart_box, pie_legend_box],
+            spacing=25,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+    )
+
     analytics_tab_view = ft.Container(
         content=ft.Column(
             [
                 ft.Row(
                     [
                         ft.Icon(ft.Icons.BAR_CHART, color=ft.Colors.INDIGO_400, size=28),
-                        ft.Text("Στατιστικά & Ανάλυση Σαρώσεων", size=22, weight=ft.FontWeight.BOLD),
+                        ft.Text("Στατιστικά & Ανάλυση Σαρώσεων", size=18 if is_android else 22, weight=ft.FontWeight.BOLD),
                     ],
                 ),
                 ft.Row(
@@ -1825,7 +2058,7 @@ def main(page: ft.Page):
                             bgcolor="#111827",
                             border_radius=10,
                             border=ft.Border.all(1, "#1f2937"),
-                            width=220,
+                            width=160 if is_android else 220,
                         ),
                         ft.Container(
                             content=ft.Column(
@@ -1839,7 +2072,7 @@ def main(page: ft.Page):
                             bgcolor="#111827",
                             border_radius=10,
                             border=ft.Border.all(1, "#1f2937"),
-                            width=220,
+                            width=175 if is_android else 220,
                         ),
                         ft.Container(
                             content=ft.Column(
@@ -1853,7 +2086,7 @@ def main(page: ft.Page):
                             bgcolor="#111827",
                             border_radius=10,
                             border=ft.Border.all(1, "#1f2937"),
-                            width=300,
+                            width=None if is_android else 300,
                         ),
                     ],
                     spacing=15,
@@ -1867,41 +2100,21 @@ def main(page: ft.Page):
                             ft.Row(
                                 [
                                     ft.Icon(ft.Icons.PIE_CHART, color=ft.Colors.CYAN_400, size=22),
-                                    ft.Text("Κατανομή Σαρώσεων ανά Κατηγορία (Διάγραμμα Πίτας)", size=17, weight=ft.FontWeight.BOLD),
+                                    ft.Text(
+                                        "Κατανομή Σαρώσεων ανά Κατηγορία (Διάγραμμα Πίτας)",
+                                        size=15 if is_android else 17,
+                                        weight=ft.FontWeight.BOLD,
+                                        expand=True,
+                                    ),
                                 ],
                                 spacing=8,
                             ),
                             ft.Divider(height=8, color="#1f2937"),
-                            ft.Row(
-                                [
-                                    ft.Container(
-                                        content=pie_chart_control,
-                                        width=460,
-                                        height=330,
-                                        alignment=ft.Alignment(0, 0),
-                                    ),
-                                    ft.Container(
-                                        content=ft.Column(
-                                            [
-                                                ft.Text("Υπόμνημα Κατηγοριών:", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.CYAN_300),
-                                                pie_legend_column,
-                                            ],
-                                            spacing=10,
-                                        ),
-                                        padding=16,
-                                        bgcolor="#0f172a",
-                                        border_radius=10,
-                                        border=ft.Border.all(1, "#232f47"),
-                                        expand=True,
-                                    ),
-                                ],
-                                spacing=25,
-                                vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                            ),
+                            pie_section_layout,
                         ],
                         spacing=12,
                     ),
-                    padding=20,
+                    padding=16 if is_android else 20,
                     bgcolor="#111827",
                     border_radius=12,
                     border=ft.Border.all(1, "#1f2937"),
@@ -1914,20 +2127,25 @@ def main(page: ft.Page):
                             ft.Row(
                                 [
                                     ft.Icon(ft.Icons.EQUALIZER, color=ft.Colors.AMBER_400, size=22),
-                                    ft.Text("Ιστόγραμμα Συχνότητας ανά Κατηγορία Κώδικα", size=17, weight=ft.FontWeight.BOLD),
+                                    ft.Text(
+                                        "Ιστόγραμμα Συχνότητας ανά Κατηγορία Κώδικα",
+                                        size=15 if is_android else 17,
+                                        weight=ft.FontWeight.BOLD,
+                                        expand=True,
+                                    ),
                                 ],
                                 spacing=8,
                             ),
                             ft.Divider(height=8, color="#1f2937"),
                             ft.Container(
                                 content=bar_chart_control,
-                                height=350,
+                                height=310 if is_android else 350,
                                 padding=ft.Padding.only(top=15, right=20, left=5, bottom=5),
                             ),
                         ],
                         spacing=12,
                     ),
-                    padding=20,
+                    padding=16 if is_android else 20,
                     bgcolor="#111827",
                     border_radius=12,
                     border=ft.Border.all(1, "#1f2937"),
@@ -1936,7 +2154,7 @@ def main(page: ft.Page):
             scroll=ft.ScrollMode.AUTO,
             spacing=12,
         ),
-        padding=20,
+        padding=14 if is_android else 20,
     )
 
     # ---------------------------------------------------------
@@ -1971,7 +2189,7 @@ def main(page: ft.Page):
                 ft.Row(
                     [
                         ft.Icon(ft.Icons.HELP_OUTLINE, color=ft.Colors.CYAN_400, size=28),
-                        ft.Text("Οδηγός Χρήσης & Βοήθεια (SpyQR)", size=22, weight=ft.FontWeight.BOLD),
+                        ft.Text("Οδηγός Χρήσης & Βοήθεια (SpyQR)", size=18 if is_android else 22, weight=ft.FontWeight.BOLD),
                     ],
                 ),
                 ft.Text(
@@ -1985,30 +2203,30 @@ def main(page: ft.Page):
                     [
                         ft.Container(
                             build_help_card(
-                                "Ζωντανή Κάμερα (Webcam)",
+                                "Ζωντανή Κάμερα (Webcam / Android Κάμερα)",
                                 "Πατήστε «Έναρξη Κάμερας» και κρατήστε το QR Code ή το Barcode μέσα στο πλαίσιο σκόπευσης. Για γραμμωτούς κώδικες (1D Barcodes), ευθυγραμμίστε τις γραμμές με την οριζόντια γραμμή οδηγού.",
                                 ft.Icons.VIDEOCAM,
                                 ft.Colors.BLUE_400,
                             ),
-                            col=4,
+                            col={"xs": 12, "md": 4},
                         ),
                         ft.Container(
                             build_help_card(
                                 "Φόρτωση από Αρχείο Εικόνας",
-                                "Πατήστε «Φόρτωση Εικόνας...» για να επιλέξετε φωτογραφία ή screenshot (PNG, JPG, BMP, WebP) από τον υπολογιστή σας.",
+                                "Πατήστε «Φόρτωση Εικόνας...» για να επιλέξετε φωτογραφία ή screenshot (PNG, JPG, BMP, WebP) από τη συσκευή σας.",
                                 ft.Icons.UPLOAD_FILE,
                                 ft.Colors.PURPLE_400,
                             ),
-                            col=4,
+                            col={"xs": 12, "md": 4},
                         ),
                         ft.Container(
                             build_help_card(
                                 "Σάρωση από Πρόχειρο (Clipboard)",
-                                "Κάντε αντιγραφή (Copy / Win+Shift+S) οποιοδήποτε QR ή Barcode από την οθόνη σας και πατήστε «Από Πρόχειρο (Clipboard)».",
+                                "Κάντε αντιγραφή (Copy) οποιοδήποτε QR, Barcode ή κείμενο/κωδικό και πατήστε «Από Πρόχειρο (Clipboard)».",
                                 ft.Icons.CONTENT_PASTE,
                                 ft.Colors.TEAL_400,
                             ),
-                            col=4,
+                            col={"xs": 12, "md": 4},
                         ),
                     ],
                     spacing=12,
@@ -2025,7 +2243,7 @@ def main(page: ft.Page):
                                 ft.Icons.SHOPPING_BAG,
                                 ft.Colors.GREEN_400,
                             ),
-                            col=6,
+                            col={"xs": 12, "md": 6},
                         ),
                         ft.Container(
                             build_help_card(
@@ -2034,7 +2252,7 @@ def main(page: ft.Page):
                                 ft.Icons.MENU_BOOK,
                                 ft.Colors.AMBER_400,
                             ),
-                            col=6,
+                            col={"xs": 12, "md": 6},
                         ),
                         ft.Container(
                             build_help_card(
@@ -2043,7 +2261,7 @@ def main(page: ft.Page):
                                 ft.Icons.INVENTORY_2,
                                 ft.Colors.ORANGE_400,
                             ),
-                            col=6,
+                            col={"xs": 12, "md": 6},
                         ),
                         ft.Container(
                             build_help_card(
@@ -2052,7 +2270,7 @@ def main(page: ft.Page):
                                 ft.Icons.LANGUAGE,
                                 ft.Colors.LIGHT_BLUE_400,
                             ),
-                            col=6,
+                            col={"xs": 12, "md": 6},
                         ),
                         ft.Container(
                             build_help_card(
@@ -2061,7 +2279,7 @@ def main(page: ft.Page):
                                 ft.Icons.WIFI,
                                 ft.Colors.PURPLE_300,
                             ),
-                            col=6,
+                            col={"xs": 12, "md": 6},
                         ),
                         ft.Container(
                             build_help_card(
@@ -2070,7 +2288,7 @@ def main(page: ft.Page):
                                 ft.Icons.LOCATION_ON,
                                 ft.Colors.RED_400,
                             ),
-                            col=6,
+                            col={"xs": 12, "md": 6},
                         ),
                     ],
                     spacing=12,
@@ -2096,6 +2314,7 @@ def main(page: ft.Page):
                                     ft.Text(APP_DESCRIPTION, size=13, color=ft.Colors.GREY_400),
                                 ],
                                 spacing=8,
+                                wrap=True,
                                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
                             ),
                             ft.Row(
@@ -2110,7 +2329,7 @@ def main(page: ft.Page):
                                             tight=True,
                                             spacing=5,
                                         ),
-                                        on_click=lambda _: webbrowser.open("https://alekos.program.gr"),
+                                        on_click=lambda _: open_external_url("https://alekos.program.gr"),
                                         tooltip="Επίσκεψη στην ιστοσελίδα του δημιουργού (https://alekos.program.gr)",
                                     ),
                                     ft.Text("•", color=ft.Colors.GREY_600),
@@ -2123,11 +2342,12 @@ def main(page: ft.Page):
                                             tight=True,
                                             spacing=4,
                                         ),
-                                        on_click=lambda _: webbrowser.open("https://github.com/spyalekos"),
+                                        on_click=lambda _: open_external_url("https://github.com/spyalekos"),
                                         tooltip="GitHub: https://github.com/spyalekos",
                                     ),
                                 ],
                                 spacing=4,
+                                wrap=True,
                                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
                             ),
                         ],
@@ -2144,7 +2364,7 @@ def main(page: ft.Page):
             scroll=ft.ScrollMode.AUTO,
             spacing=10,
         ),
-        padding=20,
+        padding=14 if is_android else 20,
     )
 
     # ---------------------------------------------------------
@@ -2165,6 +2385,7 @@ def main(page: ft.Page):
         content=ft.Column(
             [
                 ft.TabBar(
+                    scrollable=is_android,
                     tabs=[
                         ft.Tab(label="Σαρωτής", icon=ft.Icons.QR_CODE_SCANNER),
                         ft.Tab(label="Αποτέλεσμα", icon=ft.Icons.FACT_CHECK),
@@ -2315,10 +2536,10 @@ def main(page: ft.Page):
     theme_toggle_btn.on_click = toggle_theme_invert
 
     app_bar = ft.AppBar(
-        leading=ft.Icon(ft.Icons.QR_CODE_2, color=ft.Colors.CYAN_400, size=30),
+        leading=ft.Icon(ft.Icons.QR_CODE_2, color=ft.Colors.CYAN_400, size=28 if is_android else 30),
         title=ft.Row(
             [
-                ft.Text(APP_NAME, size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                ft.Text(APP_NAME, size=18 if is_android else 20, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
                 ft.Container(
                     content=ft.Text(f"v{__version__}", size=11, color=ft.Colors.CYAN_200, weight=ft.FontWeight.BOLD),
                     bgcolor="#0e7490",
@@ -2328,12 +2549,12 @@ def main(page: ft.Page):
                 ft.Text("•", size=12, color=ft.Colors.GREY_600),
                 ft.TextButton(
                     content=ft.Text("by SpyAlekos", size=12, weight=ft.FontWeight.W_600, color=ft.Colors.CYAN_300),
-                    on_click=lambda _: webbrowser.open("https://alekos.program.gr"),
+                    on_click=lambda _: open_external_url("https://alekos.program.gr"),
                     tooltip="Δημιουργός: SpyAlekos (https://alekos.program.gr)",
                 ),
             ],
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=8,
+            spacing=6 if is_android else 8,
         ),
         actions=[
             theme_toggle_btn,
@@ -2351,7 +2572,8 @@ def main(page: ft.Page):
         if e.data == "close":
             scanner_engine.stop()
 
-    page.window.on_event = on_window_event
+    if not is_android:
+        page.window.on_event = on_window_event
 
     # Early rendering
     page.appbar = app_bar
@@ -2359,6 +2581,12 @@ def main(page: ft.Page):
     refresh_history_tab()
     refresh_analytics_tab()
     page.update()
+
+    if is_android:
+        try:
+            page.run_task(poll_android_scan_results)
+        except Exception:
+            pass
 
     try:
         import pyi_splash

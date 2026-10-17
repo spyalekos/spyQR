@@ -8,15 +8,36 @@ import flet as ft
 import flet_secure_storage as fss
 
 
+def _resolve_fallback_file() -> str:
+    """Returns a writable path for the history fallback JSON file on both Desktop and Android."""
+    candidates = []
+    env_data = os.environ.get("FLET_APP_STORAGE_DATA") or os.environ.get("SERIOUS_PYTHON_SITE_PACKAGES")
+    if env_data:
+        candidates.append(env_data)
+    candidates.extend([
+        "/data/user/0/gr.spyalekos.spyqr/files",
+        "/data/data/gr.spyalekos.spyqr/files",
+        os.path.expanduser("~"),
+    ])
+    for folder in candidates:
+        try:
+            if folder and os.path.isdir(folder) and os.access(folder, os.W_OK):
+                return os.path.join(folder, ".spyqr_history.json")
+        except Exception:
+            continue
+    return os.path.join(os.path.expanduser("~"), ".spyqr_history.json")
+
+
 class HistoryManager:
     """Manages scan history persistence using flet-secure-storage with local disk fallback."""
 
     STORAGE_KEY = "spyqr_scan_history_v1"
-    FALLBACK_FILE = os.path.join(os.path.expanduser("~"), ".spyqr_history.json")
+    FALLBACK_FILE = _resolve_fallback_file()
 
     def __init__(self, page: ft.Page, secure_storage: Optional[fss.SecureStorage] = None):
         self.page = page
         self.secure_storage = secure_storage
+        self.FALLBACK_FILE = _resolve_fallback_file()
         self.items: List[Dict[str, Any]] = []
         self._load_fallback()
 
