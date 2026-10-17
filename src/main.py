@@ -692,7 +692,7 @@ def main(page: ft.Page):
             scroll=ft.ScrollMode.AUTO,
             spacing=10,
         ),
-        padding=ft.Padding.only(left=14, top=14, right=14, bottom=56) if is_android else 20,
+        padding=ft.Padding.only(left=12, top=10, right=12, bottom=24) if is_android else 20,
     )
 
     # ---------------------------------------------------------
@@ -886,7 +886,7 @@ def main(page: ft.Page):
             scroll=ft.ScrollMode.AUTO,
             spacing=12,
         ),
-        padding=ft.Padding.only(left=14, top=14, right=14, bottom=56) if is_android else 20,
+        padding=ft.Padding.only(left=12, top=10, right=12, bottom=24) if is_android else 20,
     )
 
     def update_result_tab(parsed: Dict[str, Any]):
@@ -1580,7 +1580,7 @@ def main(page: ft.Page):
             scroll=ft.ScrollMode.AUTO,
             spacing=10,
         ),
-        padding=ft.Padding.only(left=14, top=14, right=14, bottom=56) if is_android else 20,
+        padding=ft.Padding.only(left=12, top=10, right=12, bottom=24) if is_android else 20,
     )
 
     # ---------------------------------------------------------
@@ -1798,7 +1798,7 @@ def main(page: ft.Page):
                 ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
                 ft.Container(
                     content=history_datatable,
-                    height=460,
+                    height=380 if is_android else 460,
                     bgcolor="#111827",
                     border_radius=8,
                     padding=10,
@@ -1807,7 +1807,7 @@ def main(page: ft.Page):
             scroll=ft.ScrollMode.AUTO,
             spacing=10,
         ),
-        padding=ft.Padding.only(left=14, top=14, right=14, bottom=56) if is_android else 20,
+        padding=ft.Padding.only(left=12, top=10, right=12, bottom=24) if is_android else 20,
     )
 
     # ---------------------------------------------------------
@@ -1836,15 +1836,15 @@ def main(page: ft.Page):
         sections=[
             fc.PieChartSection(
                 value=1,
-                title="Προϊόντα (1)",
+                title="100%",
                 color=ft.Colors.BLUE_400,
-                radius=95 if is_android else 110,
-                title_style=ft.TextStyle(size=12 if is_android else 13, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                radius=60 if is_android else 110,
+                title_style=ft.TextStyle(size=11 if is_android else 13, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
             ),
         ],
         sections_space=3,
-        center_space_radius=45 if is_android else 55,
-        height=260 if is_android else 320,
+        center_space_radius=30 if is_android else 50,
+        height=200 if is_android else 320,
     )
 
     pie_legend_column = ft.Column(spacing=8)
@@ -1852,41 +1852,64 @@ def main(page: ft.Page):
     bar_chart_control = fc.BarChart(
         groups=[
             fc.BarChartGroup(
-                x=0,
+                x=1,
                 rods=[
                     fc.BarChartRod(
                         from_y=0,
                         to_y=1,
                         color=ft.Colors.BLUE_400,
-                        width=32 if is_android else 38,
+                        width=22 if is_android else 36,
                         border_radius=6,
                     )
                 ],
             ),
         ],
+        group_alignment=ft.MainAxisAlignment.SPACE_AROUND,
+        group_spacing=14,
         left_axis=fc.ChartAxis(
-            title=ft.Text("Πλήθος Σαρώσεων", size=12, weight=ft.FontWeight.BOLD),
-            title_size=26,
-            label_size=32,
+            title=ft.Text("Πλήθος Σαρώσεων", size=11 if is_android else 12, weight=ft.FontWeight.BOLD),
+            title_size=24 if is_android else 28,
+            label_size=24 if is_android else 32,
             show_labels=True,
         ),
         bottom_axis=fc.ChartAxis(
-            label_size=36,
+            label_size=28 if is_android else 34,
             show_labels=True,
             labels=[
-                fc.ChartAxisLabel(value=0, label=ft.Text("PRODUCT", size=11 if is_android else 12, weight=ft.FontWeight.BOLD)),
+                fc.ChartAxisLabel(value=1, label=ft.Text("Προϊόν", size=10 if is_android else 11, weight=ft.FontWeight.BOLD)),
             ],
         ),
         horizontal_grid_lines=fc.ChartGridLines(interval=1, color="#334155", width=1),
         min_y=0,
         max_y=5,
         interactive=True,
-        height=300 if is_android else 340,
+        height=230 if is_android else 320,
     )
 
-    stat_total_scans = ft.Text("0", size=30, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_400)
-    stat_unique_types = ft.Text("0", size=30, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_400)
-    stat_top_category = ft.Text("-", size=22, weight=ft.FontWeight.BOLD, color=ft.Colors.AMBER_400)
+    stat_total_scans = ft.Text("0", size=26 if is_android else 30, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_400)
+    stat_unique_types = ft.Text("0", size=26 if is_android else 30, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_400)
+    stat_top_category = ft.Text("-", size=18 if is_android else 22, weight=ft.FontWeight.BOLD, color=ft.Colors.AMBER_400)
+
+    TYPE_SHORT_GR = {
+        "PRODUCT": "Προϊόν",
+        "BOOK": "Βιβλίο",
+        "MAGAZINE": "Περιοδ.",
+        "BARCODE": "Barcode",
+        "QR": "QR Code",
+        "URL": "Web",
+        "GEO": "GPS",
+        "WIFI": "Wi-Fi",
+        "VCARD": "Επαφή",
+        "VEVENT": "Συμβάν",
+        "IBAN": "IBAN",
+        "SMS": "SMS",
+        "EMAIL": "Email",
+        "TEL": "Τηλ",
+        "CRYPTO": "Crypto",
+        "JSON": "JSON",
+        "TEXT": "Κείμενο",
+        "GOV": "Gov.gr",
+    }
 
     def refresh_analytics_tab():
         stats = history_mgr.get_stats()
@@ -1924,25 +1947,26 @@ def main(page: ft.Page):
             col = colors[idx % len(colors)]
             pct = (count / total * 100.0) if total > 0 else 0.0
             gr_label = TYPE_NAMES_GR.get(q_type, q_type)
+            short_lbl = TYPE_SHORT_GR.get(q_type, gr_label[:7] if is_android else gr_label)
 
             sections.append(
                 fc.PieChartSection(
                     value=count,
-                    title=f"{gr_label}\n{count} ({pct:.0f}%)",
+                    title=f"{pct:.0f}%" if is_android else f"{gr_label}\n{count} ({pct:.0f}%)",
                     color=col,
-                    radius=95 if is_android else 115,
+                    radius=60 if is_android else 110,
                     title_style=ft.TextStyle(size=11 if is_android else 12, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
                 )
             )
             bar_groups.append(
                 fc.BarChartGroup(
-                    x=idx,
+                    x=idx + 1,
                     rods=[
                         fc.BarChartRod(
                             from_y=0,
                             to_y=count,
                             color=col,
-                            width=32 if is_android else 42,
+                            width=22 if is_android else 38,
                             border_radius=6,
                             tooltip=f"{gr_label} ({q_type}): {count} σαρώσεις ({pct:.1f}%)",
                         )
@@ -1951,10 +1975,10 @@ def main(page: ft.Page):
             )
             bottom_labels.append(
                 fc.ChartAxisLabel(
-                    value=idx,
+                    value=idx + 1,
                     label=ft.Container(
-                        content=ft.Text(f"{gr_label}", size=11 if is_android else 12, weight=ft.FontWeight.BOLD),
-                        padding=ft.Padding.only(top=6),
+                        content=ft.Text(short_lbl, size=10 if is_android else 11, weight=ft.FontWeight.BOLD),
+                        padding=ft.Padding.only(top=4),
                     ),
                 )
             )
@@ -1962,11 +1986,11 @@ def main(page: ft.Page):
             legend_rows.append(
                 ft.Row(
                     [
-                        ft.Container(width=16, height=16, bgcolor=col, border_radius=4),
-                        ft.Text(f"{gr_label} ({q_type}):", size=13, weight=ft.FontWeight.BOLD, color="#0f172a" if is_light else ft.Colors.WHITE),
-                        ft.Text(f"{count} σαρώσεις ({pct:.1f}%)", size=13, color="#475569" if is_light else ft.Colors.GREY_400),
+                        ft.Container(width=14 if is_android else 16, height=14 if is_android else 16, bgcolor=col, border_radius=4),
+                        ft.Text(f"{gr_label} ({q_type}):", size=12 if is_android else 13, weight=ft.FontWeight.BOLD, color="#0f172a" if is_light else ft.Colors.WHITE),
+                        ft.Text(f"{count} ({pct:.1f}%)", size=12 if is_android else 13, color="#475569" if is_light else ft.Colors.GREY_400),
                     ],
-                    spacing=8,
+                    spacing=6 if is_android else 8,
                     wrap=True,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 )
@@ -1979,28 +2003,39 @@ def main(page: ft.Page):
                     value=1,
                     title="Χωρίς Δεδομένα",
                     color=ft.Colors.GREY_700,
-                    radius=95 if is_android else 110,
-                    title_style=ft.TextStyle(size=12, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                    radius=60 if is_android else 110,
+                    title_style=ft.TextStyle(size=11 if is_android else 12, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
                 )
             ]
             bar_groups = [
                 fc.BarChartGroup(
-                    x=0,
-                    rods=[fc.BarChartRod(from_y=0, to_y=0, color=ft.Colors.GREY_700, width=40, border_radius=6)],
+                    x=1,
+                    rods=[fc.BarChartRod(from_y=0, to_y=0, color=ft.Colors.GREY_700, width=28, border_radius=6)],
                 )
             ]
             bottom_labels = [
-                fc.ChartAxisLabel(value=0, label=ft.Text("Χωρίς Δεδομένα", size=12)),
+                fc.ChartAxisLabel(value=1, label=ft.Text("—", size=11)),
             ]
             legend_rows = [
-                ft.Text("Δεν υπάρχουν καταγεγραμμένες σαρώσεις ακόμα.", size=13, color=ft.Colors.GREY_400),
+                ft.Text("Δεν υπάρχουν καταγεγραμμένες σαρώσεις ακόμα.", size=12 if is_android else 13, color=ft.Colors.GREY_400),
             ]
+
+        max_val = max(max_count, 4)
+        step = 1 if max_val <= 6 else (2 if max_val <= 12 else max(1, max_val // 5))
+        left_labels = [
+            fc.ChartAxisLabel(
+                value=float(y),
+                label=ft.Text(str(y), size=10 if is_android else 11, weight=ft.FontWeight.BOLD, color=ft.Colors.GREY_300),
+            )
+            for y in range(0, max_val + 1, step)
+        ]
 
         pie_chart_control.sections = sections
         pie_legend_column.controls = legend_rows
         bar_chart_control.groups = bar_groups
+        bar_chart_control.left_axis.labels = left_labels
         bar_chart_control.bottom_axis.labels = bottom_labels
-        bar_chart_control.max_y = float(max(max_count + 1, 4))
+        bar_chart_control.max_y = float(max_val)
 
         safe_update(stat_total_scans)
         safe_update(stat_unique_types)
@@ -2012,18 +2047,18 @@ def main(page: ft.Page):
     pie_chart_box = ft.Container(
         content=pie_chart_control,
         width=None if is_android else 460,
-        height=275 if is_android else 330,
+        height=210 if is_android else 330,
         alignment=ft.Alignment(0, 0),
     )
     pie_legend_box = ft.Container(
         content=ft.Column(
             [
-                ft.Text("Υπόμνημα Κατηγοριών:", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.CYAN_300),
+                ft.Text("Υπόμνημα Κατηγοριών:", size=13 if is_android else 14, weight=ft.FontWeight.BOLD, color=ft.Colors.CYAN_300),
                 pie_legend_column,
             ],
-            spacing=10,
+            spacing=8 if is_android else 10,
         ),
-        padding=16,
+        padding=12 if is_android else 16,
         bgcolor="#0f172a",
         border_radius=10,
         border=ft.Border.all(1, "#232f47"),
@@ -2031,7 +2066,7 @@ def main(page: ft.Page):
     )
 
     pie_section_layout: ft.Control = (
-        ft.Column([pie_chart_box, pie_legend_box], spacing=14)
+        ft.Column([pie_chart_box, pie_legend_box], spacing=10)
         if is_android
         else ft.Row(
             [pie_chart_box, pie_legend_box],
@@ -2045,121 +2080,121 @@ def main(page: ft.Page):
             [
                 ft.Row(
                     [
-                        ft.Icon(ft.Icons.BAR_CHART, color=ft.Colors.INDIGO_400, size=28),
+                        ft.Icon(ft.Icons.BAR_CHART, color=ft.Colors.INDIGO_400, size=26 if is_android else 28),
                         ft.Text("Στατιστικά & Ανάλυση Σαρώσεων", size=18 if is_android else 22, weight=ft.FontWeight.BOLD, expand=True),
                     ],
                 ),
-                ft.Row(
+                ft.ResponsiveRow(
                     [
                         ft.Container(
                             content=ft.Column(
                                 [
-                                    ft.Text("Σύνολο Σαρώσεων", size=13, color=ft.Colors.GREY_400),
+                                    ft.Text("Σύνολο Σαρώσεων", size=12 if is_android else 13, color=ft.Colors.GREY_400),
                                     stat_total_scans,
                                 ],
-                                spacing=4,
+                                spacing=2,
                             ),
-                            padding=16,
+                            padding=12 if is_android else 16,
                             bgcolor="#111827",
                             border_radius=10,
                             border=ft.Border.all(1, "#1f2937"),
-                            width=160 if is_android else 220,
+                            col={"xs": 6, "md": 4},
                         ),
                         ft.Container(
                             content=ft.Column(
                                 [
-                                    ft.Text("Διαφορετικές Κατηγορίες", size=13, color=ft.Colors.GREY_400),
+                                    ft.Text("Κατηγορίες", size=12 if is_android else 13, color=ft.Colors.GREY_400),
                                     stat_unique_types,
                                 ],
-                                spacing=4,
+                                spacing=2,
                             ),
-                            padding=16,
+                            padding=12 if is_android else 16,
                             bgcolor="#111827",
                             border_radius=10,
                             border=ft.Border.all(1, "#1f2937"),
-                            width=175 if is_android else 220,
+                            col={"xs": 6, "md": 4},
                         ),
                         ft.Container(
                             content=ft.Column(
                                 [
-                                    ft.Text("Δημοφιλέστερη Κατηγορία", size=13, color=ft.Colors.GREY_400),
+                                    ft.Text("Δημοφιλέστερη Κατηγορία", size=12 if is_android else 13, color=ft.Colors.GREY_400),
                                     stat_top_category,
                                 ],
-                                spacing=4,
+                                spacing=2,
                             ),
-                            padding=16,
+                            padding=12 if is_android else 16,
                             bgcolor="#111827",
                             border_radius=10,
                             border=ft.Border.all(1, "#1f2937"),
-                            width=None if is_android else 300,
+                            col={"xs": 12, "md": 4},
                         ),
                     ],
-                    spacing=15,
-                    wrap=True,
+                    spacing=10,
+                    run_spacing=10,
                 ),
-                ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
+                ft.Divider(height=6, color=ft.Colors.TRANSPARENT),
                 # TOP: Large Pie Chart with Legend
                 ft.Container(
                     content=ft.Column(
                         [
                             ft.Row(
                                 [
-                                    ft.Icon(ft.Icons.PIE_CHART, color=ft.Colors.CYAN_400, size=22),
+                                    ft.Icon(ft.Icons.PIE_CHART, color=ft.Colors.CYAN_400, size=20 if is_android else 22),
                                     ft.Text(
-                                        "Κατανομή Σαρώσεων ανά Κατηγορία (Διάγραμμα Πίτας)",
-                                        size=15 if is_android else 17,
+                                        "Κατανομή Σαρώσεων ανά Κατηγορία",
+                                        size=14 if is_android else 17,
                                         weight=ft.FontWeight.BOLD,
                                         expand=True,
                                     ),
                                 ],
                                 spacing=8,
                             ),
-                            ft.Divider(height=8, color="#1f2937"),
+                            ft.Divider(height=6, color="#1f2937"),
                             pie_section_layout,
                         ],
-                        spacing=12,
+                        spacing=10,
                     ),
-                    padding=16 if is_android else 20,
+                    padding=14 if is_android else 20,
                     bgcolor="#111827",
                     border_radius=12,
                     border=ft.Border.all(1, "#1f2937"),
                 ),
-                ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
+                ft.Divider(height=6, color=ft.Colors.TRANSPARENT),
                 # BOTTOM: Large Histogram / Bar Chart below Pie Chart
                 ft.Container(
                     content=ft.Column(
                         [
                             ft.Row(
                                 [
-                                    ft.Icon(ft.Icons.EQUALIZER, color=ft.Colors.AMBER_400, size=22),
+                                    ft.Icon(ft.Icons.EQUALIZER, color=ft.Colors.AMBER_400, size=20 if is_android else 22),
                                     ft.Text(
-                                        "Ιστόγραμμα Συχνότητας ανά Κατηγορία Κώδικα",
-                                        size=15 if is_android else 17,
+                                        "Ιστόγραμμα Συχνότητας ανά Κατηγορία",
+                                        size=14 if is_android else 17,
                                         weight=ft.FontWeight.BOLD,
                                         expand=True,
                                     ),
                                 ],
                                 spacing=8,
                             ),
-                            ft.Divider(height=8, color="#1f2937"),
+                            ft.Divider(height=6, color="#1f2937"),
                             ft.Container(
                                 content=bar_chart_control,
-                                height=310 if is_android else 350,
-                                padding=ft.Padding.only(top=15, right=20, left=5, bottom=5),
+                                height=240 if is_android else 330,
+                                padding=ft.Padding.only(top=10, right=15, left=5, bottom=5),
                             ),
                         ],
-                        spacing=12,
+                        spacing=10,
                     ),
-                    padding=16 if is_android else 20,
+                    padding=14 if is_android else 20,
                     bgcolor="#111827",
                     border_radius=12,
                     border=ft.Border.all(1, "#1f2937"),
                 ),
             ],
             scroll=ft.ScrollMode.AUTO,
-            spacing=12,
+            spacing=10,
         ),
-        padding=ft.Padding.only(left=14, top=14, right=14, bottom=56) if is_android else 20,
+        padding=ft.Padding.only(left=12, top=10, right=12, bottom=24) if is_android else 20,
     )
 
     # ---------------------------------------------------------
@@ -2369,7 +2404,7 @@ def main(page: ft.Page):
             scroll=ft.ScrollMode.AUTO,
             spacing=10,
         ),
-        padding=ft.Padding.only(left=14, top=14, right=14, bottom=56) if is_android else 20,
+        padding=ft.Padding.only(left=12, top=10, right=12, bottom=24) if is_android else 20,
     )
 
     # ---------------------------------------------------------
@@ -2585,17 +2620,7 @@ def main(page: ft.Page):
 
     # Early rendering
     page.appbar = app_bar
-    if is_android:
-        page.add(
-            ft.SafeArea(
-                content=tabs,
-                avoid_intrusions_bottom=True,
-                maintain_bottom_view_padding=True,
-                expand=True,
-            )
-        )
-    else:
-        page.add(tabs)
+    page.add(tabs)
     refresh_history_tab()
     refresh_analytics_tab()
     page.update()
