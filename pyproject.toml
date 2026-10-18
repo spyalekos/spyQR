@@ -1,6 +1,6 @@
 [project]
 name = "spyqr"
-version = "0.2.8"
+version = "0.2.9"
 description = "SpyQR - Έξυπνος Σαρωτής & Δημιουργός QR Codes και Barcodes (1D/2D)"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -24,6 +24,8 @@ dependencies = [
     "qrcode[pil]>=8.0",
     "pillow>=11.0",
     "python-barcode>=0.16.1",
+    "openpyxl>=3.1.5",
+    "fpdf2>=2.8.9",
 ]
 
 [dependency-groups]
@@ -43,8 +45,8 @@ org = "gr.spyalekos"
 product = "SpyQR"
 company = "SpyAlekos"
 copyright = "Copyright (C) 2026 SpyAlekos"
-build_number = 1
-version = "0.2.8"
+build_number = 2
+version = "0.2.9"
 
 [tool.flet.app]
 path = "src"

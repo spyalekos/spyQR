@@ -35,7 +35,7 @@ import flet_spinkit as fsk
 import flet_webview as fwv
 
 from generator import generate_qr_image, save_qr_to_file
-from history import HistoryManager
+from history import HistoryManager, open_file_with_default_app
 from scanner import (
     SCAN_COMMAND_URL,
     SCAN_FILE_URL_PREFIX,
@@ -1699,7 +1699,7 @@ def main(page: ft.Page):
 
     history_search_input.on_change = lambda _: refresh_history_tab()
 
-    async def export_history_csv_click(e):
+    def export_history_excel_click(e):
         if not history_mgr.items:
             page.show_dialog(
                 ft.SnackBar(
@@ -1708,43 +1708,75 @@ def main(page: ft.Page):
                 )
             )
             return
-
-        sio = io.StringIO()
-        writer = csv.writer(sio)
-        writer.writerow(["ID", "Timestamp", "Type", "Raw_Data"])
-        for it in history_mgr.items:
-            writer.writerow([
-                it.get("id", ""),
-                it.get("timestamp_str", ""),
-                it.get("qr_type", ""),
-                it.get("raw_data", ""),
-            ])
-        csv_bytes = ("\ufeff" + sio.getvalue()).encode("utf-8")
-
         try:
-            save_path = await file_picker.save_file(
-                dialog_title="Εξαγωγή Ιστορικού σε CSV",
-                file_name="spyqr_history.csv",
-                file_type=ft.FilePickerFileType.CUSTOM,
-                allowed_extensions=["csv"],
-                src_bytes=csv_bytes,
-            )
-        except Exception:
-            save_path = os.path.join(os.path.expanduser("~"), "spyqr_history.csv")
-
-        if save_path:
-            if not is_android:
-                if not save_path.lower().endswith(".csv"):
-                    save_path += ".csv"
-                try:
-                    with open(save_path, "wb") as f:
-                        f.write(csv_bytes)
-                except Exception as ex:
-                    print(f"[CSV Export] Error: {ex}")
+            save_path = history_mgr.export_excel()
+            open_file_with_default_app(save_path, page)
             page.show_dialog(
                 ft.SnackBar(
-                    content=ft.Text(f"Το ιστορικό εξήχθη επιτυχώς σε CSV: {save_path}"),
+                    content=ft.Text(f"Το ιστορικό εξήχθη και ανοίγει (Excel):\n{save_path}"),
                     bgcolor=ft.Colors.GREEN_700,
+                    duration=3500,
+                )
+            )
+        except Exception as ex:
+            page.show_dialog(
+                ft.SnackBar(
+                    content=ft.Text(f"Σφάλμα εξαγωγής Excel: {ex}"),
+                    bgcolor=ft.Colors.RED_800,
+                )
+            )
+
+    def export_history_pdf_click(e):
+        if not history_mgr.items:
+            page.show_dialog(
+                ft.SnackBar(
+                    content=ft.Text("Το ιστορικό είναι κενό."),
+                    bgcolor=ft.Colors.ORANGE_800,
+                )
+            )
+            return
+        try:
+            save_path = history_mgr.export_pdf()
+            open_file_with_default_app(save_path, page)
+            page.show_dialog(
+                ft.SnackBar(
+                    content=ft.Text(f"Το ιστορικό εξήχθη και ανοίγει (PDF):\n{save_path}"),
+                    bgcolor=ft.Colors.GREEN_700,
+                    duration=3500,
+                )
+            )
+        except Exception as ex:
+            page.show_dialog(
+                ft.SnackBar(
+                    content=ft.Text(f"Σφάλμα εξαγωγής PDF: {ex}"),
+                    bgcolor=ft.Colors.RED_800,
+                )
+            )
+
+    def export_history_csv_click(e):
+        if not history_mgr.items:
+            page.show_dialog(
+                ft.SnackBar(
+                    content=ft.Text("Το ιστορικό είναι κενό."),
+                    bgcolor=ft.Colors.ORANGE_800,
+                )
+            )
+            return
+        try:
+            save_path = history_mgr.export_csv()
+            open_file_with_default_app(save_path, page)
+            page.show_dialog(
+                ft.SnackBar(
+                    content=ft.Text(f"Το ιστορικό εξήχθη και ανοίγει (CSV):\n{save_path}"),
+                    bgcolor=ft.Colors.GREEN_700,
+                    duration=3500,
+                )
+            )
+        except Exception as ex:
+            page.show_dialog(
+                ft.SnackBar(
+                    content=ft.Text(f"Σφάλμα εξαγωγής CSV: {ex}"),
+                    bgcolor=ft.Colors.RED_800,
                 )
             )
 
@@ -1775,19 +1807,35 @@ def main(page: ft.Page):
                         ft.Row(
                             [
                                 ft.Button(
-                                    content=ft.Row([ft.Icon(ft.Icons.FILE_DOWNLOAD, size=18), ft.Text("Εξαγωγή CSV")], tight=True),
+                                    content=ft.Row([ft.Icon(ft.Icons.TABLE_CHART, size=18), ft.Text("Excel")], tight=True),
+                                    on_click=export_history_excel_click,
+                                    bgcolor=ft.Colors.GREEN_800,
+                                    color=ft.Colors.WHITE,
+                                    tooltip="Αποθήκευση στο Downloads και άνοιγμα σε Excel",
+                                ),
+                                ft.Button(
+                                    content=ft.Row([ft.Icon(ft.Icons.PICTURE_AS_PDF, size=18), ft.Text("PDF")], tight=True),
+                                    on_click=export_history_pdf_click,
+                                    bgcolor=ft.Colors.RED_900,
+                                    color=ft.Colors.WHITE,
+                                    tooltip="Αποθήκευση στο Downloads και άνοιγμα σε PDF",
+                                ),
+                                ft.Button(
+                                    content=ft.Row([ft.Icon(ft.Icons.FILE_DOWNLOAD, size=18), ft.Text("CSV")], tight=True),
                                     on_click=export_history_csv_click,
                                     bgcolor=ft.Colors.TEAL_800,
                                     color=ft.Colors.WHITE,
+                                    tooltip="Αποθήκευση στο Downloads και άνοιγμα σε CSV",
                                 ),
                                 ft.Button(
-                                    content=ft.Row([ft.Icon(ft.Icons.DELETE_FOREVER, size=18), ft.Text("Καθαρισμός Όλων")], tight=True),
+                                    content=ft.Row([ft.Icon(ft.Icons.DELETE_FOREVER, size=18), ft.Text("Καθαρισμός")], tight=True),
                                     on_click=clear_history_click,
                                     bgcolor="#1e293b",
                                     color=ft.Colors.RED_300,
+                                    tooltip="Εκκαθάριση όλων των εγγραφών",
                                 ),
                             ],
-                            spacing=8,
+                            spacing=6,
                             wrap=True,
                         ),
                     ],
@@ -2341,6 +2389,41 @@ def main(page: ft.Page):
                     "Επιλέξτε τον επιθυμητό τύπο από το μενού (QR Code 2D, Barcode Code-128, EAN-13, EAN-8, UPC-A ή Code-39), πληκτρολογήστε το περιεχόμενο ή τον αριθμό, διαλέξτε χρώμα από την παλέτα και πατήστε «Αποθήκευση Εικόνας (PNG)».",
                     ft.Icons.CREATE,
                     ft.Colors.PURPLE_400,
+                ),
+                ft.Divider(height=12, color="#1e293b"),
+                ft.Text("4. Ιστορικό & Εξαγωγή Αναφορών (Καρτέλα «Ιστορικό»)", size=16, weight=ft.FontWeight.BOLD, color=ft.Colors.TEAL_300),
+                ft.ResponsiveRow(
+                    [
+                        ft.Container(
+                            build_help_card(
+                                "📊 Εξαγωγή σε Excel (.xlsx)",
+                                "Πατήστε «Excel» για άμεση εξαγωγή σε πλήρως μορφοποιημένο υπολογιστικό φύλλο με κεφαλίδες, χρώματα, αυτόματο πλάτος στηλών, αναδίπλωση κειμένου και πλήρη μεταδεδομένα.",
+                                ft.Icons.TABLE_CHART,
+                                ft.Colors.GREEN_400,
+                            ),
+                            col={"xs": 12, "md": 6},
+                        ),
+                        ft.Container(
+                            build_help_card(
+                                "📄 Εξαγωγή σε PDF",
+                                "Πατήστε «PDF» για άμεση δημιουργία εκτυπώσιμης αναφοράς σε οριζόντια διάταξη (Landscape A4) με κεφαλίδες, υποσέλιδα, αρίθμηση σελίδων και ελληνικούς χαρακτήρες.",
+                                ft.Icons.PICTURE_AS_PDF,
+                                ft.Colors.RED_400,
+                            ),
+                            col={"xs": 12, "md": 6},
+                        ),
+                        ft.Container(
+                            build_help_card(
+                                "⚡ Αυτόματη Αποθήκευση & Άμεσο Άνοιγμα",
+                                "Όλα τα αρχεία (Excel, PDF, CSV) αποθηκεύονται απευθείας στο φάκελο Downloads χωρίς επιπλέον ερωτήσεις και ανοίγουν αυτόματα με την προεπιλεγμένη εφαρμογή του συστήματός σας!",
+                                ft.Icons.OPEN_IN_NEW,
+                                ft.Colors.CYAN_400,
+                            ),
+                            col={"xs": 12, "md": 12},
+                        ),
+                    ],
+                    spacing=12,
+                    run_spacing=12,
                 ),
                 ft.Divider(height=20, color="#1e293b"),
                 ft.Container(

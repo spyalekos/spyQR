@@ -40,6 +40,12 @@ hiddenimports = [
     'zxingcpp',
     'PIL',
     'numpy',
+    'openpyxl',
+    'et_xmlfile',
+    'fpdf',
+    'fpdf2',
+    'defusedxml',
+    'fonttools',
 ]
 
 packages_to_collect = [
@@ -61,6 +67,9 @@ packages_to_collect = [
     'flet_camera',
     'zxingcpp',
     'barcode',
+    'openpyxl',
+    'fpdf',
+    'fpdf2',
 ]
 
 for pkg in packages_to_collect:
