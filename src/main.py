@@ -67,19 +67,25 @@ def main(page: ft.Page):
     page.title = f"{APP_NAME} v{__version__} - QR Code Scanner & Utility"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
+    assets_dir = get_assets_path()
+    beep_wav_path = os.path.join(assets_dir, "beep.wav")
+    icon_ico_path = os.path.join(assets_dir, "icon.ico")
+    icon_png_path = os.path.join(assets_dir, "icon.png")
+
     if not is_android:
         page.window.width = 1100
         page.window.height = 800
         page.window.min_width = 850
         page.window.min_height = 650
+        if os.path.exists(icon_ico_path):
+            page.window.icon = icon_ico_path
+        elif os.path.exists(icon_png_path):
+            page.window.icon = icon_png_path
 
         try:
             page.run_task(page.window.center)
         except Exception:
             pass
-
-    assets_dir = get_assets_path()
-    beep_wav_path = os.path.join(assets_dir, "beep.wav")
 
     # ---------------------------------------------------------
     # 1. MOUNTING SERVICES (Definitive Standard: page.services)
