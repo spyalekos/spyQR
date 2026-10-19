@@ -68,11 +68,14 @@ def open_file_with_default_app(file_path: str, page: Optional[ft.Page] = None) -
 def get_pdf_font_path() -> Optional[str]:
     """Finds a usable TrueType Unicode font for PDF export with Greek language support."""
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    candidates = [
+    candidates = []
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        candidates.append(os.path.join(sys._MEIPASS, "assets", "fonts", "DejaVuSans.ttf"))
+    candidates.extend([
         os.path.join(current_dir, "..", "assets", "fonts", "DejaVuSans.ttf"),
         os.path.join(current_dir, "assets", "fonts", "DejaVuSans.ttf"),
         os.path.abspath(os.path.join("assets", "fonts", "DejaVuSans.ttf")),
-    ]
+    ])
     try:
         import barcode
         candidates.append(os.path.join(os.path.dirname(barcode.__file__), "fonts", "DejaVuSansMono.ttf"))

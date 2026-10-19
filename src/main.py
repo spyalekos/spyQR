@@ -14,25 +14,12 @@ import flet as ft
 
 # Flet Built-in Extensions:
 import flet_audio as fa
-try:
-    import flet_camera as fcam
-except ImportError:
-    fcam = None  # type: ignore
 import flet_charts as fc
 import flet_code_editor as fce
 import flet_color_pickers as fcp
 import flet_datatable2 as fdt
-import flet_flashlight as ff
-import flet_geolocator as fg
-try:
-    import flet_lottie as flot
-except ImportError:
-    flot = None  # type: ignore
 import flet_map as fm
-import flet_permission_handler as fph
 import flet_secure_storage as fss
-import flet_spinkit as fsk
-import flet_webview as fwv
 
 from generator import generate_qr_image, save_qr_to_file
 from history import HistoryManager, open_file_with_default_app
@@ -94,18 +81,12 @@ def main(page: ft.Page):
         src=beep_wav_path if os.path.exists(beep_wav_path) else "assets/beep.wav",
         autoplay=False,
     )
-    permission_handler = fph.PermissionHandler()
     secure_storage = fss.SecureStorage()
-    flashlight_service = ff.Flashlight()
-    geolocator_service = fg.Geolocator()
     clipboard_service = ft.Clipboard()
     url_launcher = ft.UrlLauncher()
 
     page.services.append(audio_player)
-    page.services.append(permission_handler)
     page.services.append(secure_storage)
-    page.services.append(flashlight_service)
-    page.services.append(geolocator_service)
     page.services.append(clipboard_service)
     page.services.append(url_launcher)
 
@@ -129,7 +110,6 @@ def main(page: ft.Page):
     # ---------------------------------------------------------
     history_mgr = HistoryManager(page, secure_storage)
     sound_enabled = True
-    flashlight_on = False
     current_result: Dict[str, Any] = {
         "raw": "5201054001050",
         "type": "PRODUCT",
@@ -189,7 +169,7 @@ def main(page: ft.Page):
     camera_placeholder = ft.Container(
         content=ft.Column(
             [
-                fsk.Ring(color=ft.Colors.BLUE_400, size=50),
+                ft.ProgressRing(color=ft.Colors.BLUE_400, width=50, height=50),
                 ft.Container(height=10),
                 placeholder_status_text,
                 placeholder_sub_text,
@@ -462,11 +442,6 @@ def main(page: ft.Page):
         tooltip="Ήχος σάρωσης (On/Off)",
         icon_color=ft.Colors.GREEN_400,
     )
-    flash_btn = ft.IconButton(
-        icon=ft.Icons.FLASH_OFF,
-        tooltip="Φακός (Flashlight)",
-        icon_color=ft.Colors.GREY_400,
-    )
 
     def toggle_sound(e):
         nonlocal sound_enabled
@@ -475,22 +450,7 @@ def main(page: ft.Page):
         sound_btn.icon_color = ft.Colors.GREEN_400 if sound_enabled else ft.Colors.GREY_400
         sound_btn.update()
 
-    def toggle_flashlight(e):
-        nonlocal flashlight_on
-        flashlight_on = not flashlight_on
-        flash_btn.icon = ft.Icons.FLASH_ON if flashlight_on else ft.Icons.FLASH_OFF
-        flash_btn.icon_color = ft.Colors.AMBER_400 if flashlight_on else ft.Colors.GREY_400
-        flash_btn.update()
-        try:
-            if flashlight_on:
-                page.run_task(flashlight_service.turn_on)
-            else:
-                page.run_task(flashlight_service.turn_off)
-        except Exception:
-            pass
-
     sound_btn.on_click = toggle_sound
-    flash_btn.on_click = toggle_flashlight
 
     async def camera_async_worker():
         """Async camera loop on Flet's main asyncio event loop for guaranteed live UI repaint."""
@@ -614,7 +574,6 @@ def main(page: ft.Page):
                     [
                         ft.Text("Εφέ & Ρυθμίσεις:", size=13, color=ft.Colors.GREY_400),
                         sound_btn,
-                        flash_btn,
                     ],
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
@@ -726,8 +685,7 @@ def main(page: ft.Page):
         height=150,
     )
 
-    # In-app WebView container info banner
-    webview_control = None
+    # In-app WebView info banner
     webview_inner: ft.Control = ft.Container(
         content=ft.Row(
             [
@@ -942,15 +900,10 @@ def main(page: ft.Page):
         skroutz_btn.visible = qr_type in ("PRODUCT", "BOOK", "BARCODE")
         off_btn.visible = qr_type == "PRODUCT"
 
-        # WebView / Browser button display
-        if qr_type == "URL" and raw_val.startswith("http"):
-            if webview_control is not None:
-                webview_control.url = raw_val
-            webview_container.visible = True
-            open_browser_btn.visible = True
-        else:
-            webview_container.visible = False
-            open_browser_btn.visible = True
+        # Web link info banner / Browser button display
+        is_http_url = (qr_type == "URL" and raw_val.startswith("http"))
+        webview_container.visible = is_http_url
+        open_browser_btn.visible = is_http_url
 
         safe_update(result_tab_view)
 

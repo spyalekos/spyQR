@@ -92,18 +92,6 @@ wheels = [
 ]
 
 [[package]]
-name = "flet-camera"
-version = "1.0.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "flet" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/3b/fe/f95ce8efc0e0374a465f127afd6f349e91e2eef57f96d1502cee48978a53/flet_camera-1.0.4.tar.gz", hash = "sha256:af0e3fe08c61e241bf25244ecfc6d956d55e65f8a12d26599a0741636d364f24", size = 16064, upload-time = "2026-10-08T22:25:26.144Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fb/73/2de6020baa4b46862295c28dfe0c3c1ae95799e2ad1e44cc4b183a273b2f/flet_camera-1.0.4-py3-none-any.whl", hash = "sha256:4fa01e43e295d03f1ab3bc5e9c786d5d82771883c86918f1355d21a7d06fc174", size = 17144, upload-time = "2026-10-08T22:25:24.975Z" },
-]
-
-[[package]]
 name = "flet-charts"
 version = "1.0.4"
 source = { registry = "https://pypi.org/simple" }
@@ -165,42 +153,6 @@ wheels = [
 ]
 
 [[package]]
-name = "flet-flashlight"
-version = "1.0.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "flet" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/56/ff/c50cc8152f320292ca376c6093ca5d5a6f9061a8bd67ba5de2d8fbf8fe22/flet_flashlight-1.0.4.tar.gz", hash = "sha256:f63f48b3bbfa65f220df37a4fbe826ad29d9876cde1d10f44810a13bd0513504", size = 7486, upload-time = "2026-10-08T22:25:37.918Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/20/e6/f1e8b28c00d8271f80bfd6335bd60dcd7f5d06191da02156886acff5d067/flet_flashlight-1.0.4-py3-none-any.whl", hash = "sha256:af918f0b2cfba89b81a718fe9c69a55ce1f792d5fb72508e051aa30f1ca5e3fc", size = 8690, upload-time = "2026-10-08T22:25:36.58Z" },
-]
-
-[[package]]
-name = "flet-geolocator"
-version = "1.0.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "flet" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/b1/4e/c73829b4e9318ddbbb7ed3bf558b8a0a54ebd2929e28cba7d747618a5de4/flet_geolocator-1.0.4.tar.gz", hash = "sha256:cb7e5774fd6e73dade2efeee50b2ff8029b11aadd10cb789f4e7c75878296f15", size = 15551, upload-time = "2026-10-08T22:25:39.843Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5a/a5/04bcbeec68f414724bc48d8133a85bc01f24e58dba9074ba3e97fe8a8d3a/flet_geolocator-1.0.4-py3-none-any.whl", hash = "sha256:26e62185104aa57d2f4b5f7b8c5f9c8c868ec7976d70a9eadddb89c6d43483da", size = 16688, upload-time = "2026-10-08T22:25:39.034Z" },
-]
-
-[[package]]
-name = "flet-lottie"
-version = "1.0.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "flet" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/94/35/a8b6c879d2802795ba98ce0083da2209977f9c2aa170a444bd4c22bc3772/flet_lottie-1.0.4.tar.gz", hash = "sha256:0121b1aa9cb6947030dc540c66ccd224c73e8cba7d35f963ab2bb29158ca3e91", size = 9189, upload-time = "2026-10-08T22:25:41.869Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/11/32/4cb2a3db464c2d9d8114a9678bc5b84bae0b768bf79f16737bf61a5821a9/flet_lottie-1.0.4-py3-none-any.whl", hash = "sha256:b893069791e887e8e0fa67a915eb853693fdeae0cefdf2b6353fb9f5d10d559b", size = 11236, upload-time = "2026-10-08T22:25:41.058Z" },
-]
-
-[[package]]
 name = "flet-map"
 version = "1.0.4"
 source = { registry = "https://pypi.org/simple" }
@@ -213,18 +165,6 @@ wheels = [
 ]
 
 [[package]]
-name = "flet-permission-handler"
-version = "1.0.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "flet" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/78/30/d2891d76b0a57ec7f46baa6bec0a65777a161de4724c032c01b5829423dc/flet_permission_handler-1.0.4.tar.gz", hash = "sha256:c55ae1143c2709f00812bc32f36c0e08bf85abb4d01545af1c7c2a1dd7ef1694", size = 12511, upload-time = "2026-10-08T22:25:47.959Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/18/fa/ff36617d7169c5846e160a1689c94e15031e783b2f649e93b54ad58ec606/flet_permission_handler-1.0.4-py3-none-any.whl", hash = "sha256:a1799fda745c519b6ef8c879d5bf49a586033f9e164a21ecae990ea5a90e3a66", size = 13673, upload-time = "2026-10-08T22:25:47.144Z" },
-]
-
-[[package]]
 name = "flet-secure-storage"
 version = "1.0.4"
 source = { registry = "https://pypi.org/simple" }
@@ -234,30 +174,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ff/80/2a88d2ce58e425fda1bbe743daa2aab34d98adae69dde8f1a767e8cdd9ff/flet_secure_storage-1.0.4.tar.gz", hash = "sha256:77240d9a2f8d529d8bb50fffc1494ac1b7cad68d6c7517ebd6741d6ad59116d7", size = 15977, upload-time = "2026-10-08T22:25:53.044Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/47/74/f324dd2b6af478b9d6960fdfdd34c7a192fc30653ef83c97f55bf8d44071/flet_secure_storage-1.0.4-py3-none-any.whl", hash = "sha256:55db99b025ffaa9d811ab2c12cf4b689297ac47b48fcbccc0eeff615db9dfd72", size = 16669, upload-time = "2026-10-08T22:25:52.047Z" },
-]
-
-[[package]]
-name = "flet-spinkit"
-version = "1.0.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "flet" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/a9/3f/2da8f73803c0344946f20ed482b2fed8926d664b181ea17fbf6f917219b1/flet_spinkit-1.0.4.tar.gz", hash = "sha256:a26b21ab9f16b389670596a4515d6f085f5cd35e12330357b4ef5508da763077", size = 11711, upload-time = "2026-10-08T22:25:55.267Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f3/8a/d5e58c2acf5a3b671d495a82acb18277374860339931a40ae5e8f3c8d479/flet_spinkit-1.0.4-py3-none-any.whl", hash = "sha256:a98cdb6eb44056ba78f5fd85d7fbb04f9f1bdae518a182c8a6d35c23566e3b28", size = 13345, upload-time = "2026-10-08T22:25:54.432Z" },
-]
-
-[[package]]
-name = "flet-webview"
-version = "1.0.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "flet" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/86/c1/918d52c442fb4decd9f32ac1574d766fec816bf6be73b48f23d9ae9faa90/flet_webview-1.0.4.tar.gz", hash = "sha256:4f5c6bebc6ad1458ef8a5b988ef471b3a83ad63ec8d3db1a8e56a5565c832d26", size = 14636, upload-time = "2026-10-08T22:26:00.152Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c9/d6/70d10c7e346751b4121bc7cffc4270a2076b288b74d38691ce7606a5b5a3/flet_webview-1.0.4-py3-none-any.whl", hash = "sha256:9f2f461b1dbdcdcc1d7d9da64ea3a14b8f59c70c21af6e4519b8cd4b992110f5", size = 18344, upload-time = "2026-10-08T22:25:59.271Z" },
 ]
 
 [[package]]
@@ -937,7 +853,7 @@ wheels = [
 
 [[package]]
 name = "spyqr"
-version = "0.2.9"
+version = "0.3.0"
 source = { virtual = "." }
 dependencies = [
     { name = "flet" },
@@ -946,13 +862,8 @@ dependencies = [
     { name = "flet-code-editor" },
     { name = "flet-color-pickers" },
     { name = "flet-datatable2" },
-    { name = "flet-flashlight" },
-    { name = "flet-geolocator" },
     { name = "flet-map" },
-    { name = "flet-permission-handler" },
     { name = "flet-secure-storage" },
-    { name = "flet-spinkit" },
-    { name = "flet-webview" },
     { name = "fpdf2" },
     { name = "openpyxl" },
     { name = "pillow" },
@@ -962,9 +873,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "flet-camera" },
     { name = "flet-desktop" },
-    { name = "flet-lottie" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "opencv-python" },
@@ -981,13 +890,8 @@ requires-dist = [
     { name = "flet-code-editor", specifier = ">=1.0.4" },
     { name = "flet-color-pickers", specifier = ">=1.0.4" },
     { name = "flet-datatable2", specifier = ">=1.0.4" },
-    { name = "flet-flashlight", specifier = ">=1.0.4" },
-    { name = "flet-geolocator", specifier = ">=1.0.4" },
     { name = "flet-map", specifier = ">=1.0.4" },
-    { name = "flet-permission-handler", specifier = ">=1.0.4" },
     { name = "flet-secure-storage", specifier = ">=1.0.4" },
-    { name = "flet-spinkit", specifier = ">=1.0.4" },
-    { name = "flet-webview", specifier = ">=1.0.4" },
     { name = "fpdf2", specifier = ">=2.8.9" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pillow", specifier = ">=11.0" },
@@ -997,9 +901,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "flet-camera", specifier = ">=1.0.4" },
     { name = "flet-desktop", specifier = ">=1.0.4" },
-    { name = "flet-lottie", specifier = ">=1.0.4" },
     { name = "numpy", specifier = ">=2.0" },
     { name = "opencv-python", specifier = ">=4.10.0" },
     { name = "pyinstaller", specifier = ">=6.22.3" },
