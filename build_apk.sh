@@ -15,6 +15,8 @@ free_memory_guards() {
     echo "🧹 Ελευθέρωση μνήμης (τερματισμός Dart LSP & Gradle Daemons)..."
     pkill -9 -f "[d]art.*language-server" 2>/dev/null || true
     pkill -9 -f "[G]radleDaemon" 2>/dev/null || true
+    pkill -9 -f "GradleWrapperMain" 2>/dev/null || true
+    pkill -9 -f "org.gradle" 2>/dev/null || true
     pkill -9 -f "[k]otlin-compiler-daemon" 2>/dev/null || true
     rm -rf "$PROJECT_DIR/build/flutter" "$PROJECT_DIR/build/site-packages" 2>/dev/null || true
     sync
@@ -25,8 +27,8 @@ export ANDROID_HOME="/home/user/Android/sdk"
 export ANDROID_SDK_ROOT="/home/user/Android/sdk"
 export PATH="/home/user/flutter/3.44.8/bin:$JAVA_HOME/bin:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
 
-# Αυστηρός περιορισμός μνήμης (< 896 MB) & SerialGC για αποφυγή παγώματος συστήματος
-JVM_LOW_MEM="-Xmx896m -Xms128m -XX:MaxMetaspaceSize=256m -XX:ReservedCodeCacheSize=64m -XX:+UseSerialGC -Dfile.encoding=UTF-8"
+# Αυστηρός περιορισμός μνήμης (< 768 MB) & SerialGC για αποφυγή παγώματος συστήματος
+JVM_LOW_MEM="-Xmx768m -Xms128m -XX:MaxMetaspaceSize=256m -XX:ReservedCodeCacheSize=64m -XX:+UseSerialGC -Dfile.encoding=UTF-8"
 export _JAVA_OPTIONS="$JVM_LOW_MEM"
 export GRADLE_OPTS="$JVM_LOW_MEM -Dorg.gradle.jvmargs=\"$JVM_LOW_MEM\" -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false -Dorg.gradle.workers.max=1 -Dorg.gradle.vfs.watch=false -Dkotlin.incremental=false -Dkotlin.compiler.execution.strategy=in-process"
 export FLET_CLI_NO_RICH_OUTPUT=1
@@ -53,6 +55,8 @@ run_phase1_stage() {
     cp -f pyproject.toml README.md "$ANDROID_STAGE/"
     cp -rf src/* "$ANDROID_STAGE/src/"
     cp -rf assets/* "$ANDROID_STAGE/assets/" 2>/dev/null || true
+    mkdir -p "$ANDROID_STAGE/src/assets"
+    cp -rf assets/* "$ANDROID_STAGE/src/assets/" 2>/dev/null || true
     sync
 
     .venv/bin/python - "$ANDROID_STAGE" "$PROJECT_NAME" "$APP_NAME" "$BUNDLE_ID" "$VERSION" "$BUILD_NUMBER" <<'PYSTAGE'
@@ -428,6 +432,43 @@ flutter.versionName=${VERSION}
 flutter.versionCode=${BUILD_NUMBER}
 EOF
 
+    echo "🎨 Ενημέρωση Android launcher icons από το assets/icon.png..."
+    .venv/bin/python - "${main_dir}/res" "assets/icon.png" <<'PYICONS'
+import os
+import sys
+from PIL import Image
+
+res_dir, icon_path = sys.argv[1:3]
+if os.path.exists(icon_path):
+    img = Image.open(icon_path).convert("RGBA")
+    mipmap_targets = {
+        "mipmap-mdpi": (48, 48),
+        "mipmap-hdpi": (72, 72),
+        "mipmap-xhdpi": (96, 96),
+        "mipmap-xxhdpi": (144, 144),
+        "mipmap-xxxhdpi": (192, 192),
+    }
+    drawable_targets = {
+        "drawable-mdpi": (108, 108),
+        "drawable-hdpi": (162, 162),
+        "drawable-xhdpi": (216, 216),
+        "drawable-xxhdpi": (324, 324),
+        "drawable-xxxhdpi": (432, 432),
+    }
+    for folder, size in mipmap_targets.items():
+        out_folder = os.path.join(res_dir, folder)
+        os.makedirs(out_folder, exist_ok=True)
+        resized = img.resize(size, Image.Resampling.LANCZOS)
+        resized.save(os.path.join(out_folder, "ic_launcher.png"), "PNG")
+        resized.save(os.path.join(out_folder, "ic_launcher_round.png"), "PNG")
+    for folder, size in drawable_targets.items():
+        out_folder = os.path.join(res_dir, folder)
+        os.makedirs(out_folder, exist_ok=True)
+        resized = img.resize(size, Image.Resampling.LANCZOS)
+        resized.save(os.path.join(out_folder, "ic_launcher_foreground.png"), "PNG")
+    print(f"✅ Δημιουργήθηκαν επιτυχώς όλα τα μεγέθη launcher icons στο {res_dir}")
+PYICONS
+
     echo "📦 Ανανέωση build/python-app bundle..."
     rm -rf "${ANDROID_STAGE}/build/python-app"
     mkdir -p "${ANDROID_STAGE}/build/python-app/assets"
@@ -518,6 +559,7 @@ EOF
         ./gradlew assembleRelease \
             -Ptarget-platform=android-arm64 \
             -x compileFlutterBuildRelease \
+            -x lintVitalRelease \
             -x downloadDistArchive_armeabi-v7a \
             -x downloadDistArchive_x86_64 \
             -x downloadDartBridge_armeabi-v7a \

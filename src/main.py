@@ -41,6 +41,11 @@ def get_assets_path() -> str:
         return os.path.join(sys._MEIPASS, "assets")
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     assets_dir = os.path.join(base_dir, "assets")
+    if os.path.exists(assets_dir) and os.path.isdir(assets_dir):
+        return assets_dir
+    sibling_assets = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+    if os.path.exists(sibling_assets) and os.path.isdir(sibling_assets):
+        return sibling_assets
     try:
         os.makedirs(assets_dir, exist_ok=True)
     except Exception:
