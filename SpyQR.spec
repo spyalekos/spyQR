@@ -97,27 +97,37 @@ a.binaries = [
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-splash = Splash(
-    'assets/spyqr_splash.jpg',
-    binaries=a.binaries,
-    datas=a.datas,
-    text_pos=None,
-    text_size=12,
-    minify_script=True,
-    always_on_top=True,
-)
+import sys
 
-icon_file = 'assets/icon.ico' if os.path.exists('assets/icon.ico') else None
+is_windows = sys.platform.startswith('win')
+splash = None
+splash_binaries = []
+
+if is_windows:
+    try:
+        splash = Splash(
+            'assets/spyqr_splash.jpg',
+            binaries=a.binaries,
+            datas=a.datas,
+            text_pos=None,
+            text_size=12,
+            minify_script=True,
+            always_on_top=True,
+        )
+        splash_binaries = splash.binaries
+    except Exception:
+        splash = None
+        splash_binaries = []
+
+icon_file = 'assets/icon.ico' if (is_windows and os.path.exists('assets/icon.ico')) else None
+
+exe_args = [pyz, a.scripts]
+if splash is not None:
+    exe_args.extend([splash, splash_binaries])
+exe_args.extend([a.binaries, a.zipfiles, a.datas, []])
 
 exe = EXE(
-    pyz,
-    a.scripts,
-    splash,
-    splash.binaries,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    [],
+    *exe_args,
     name='SpyQR',
     debug=False,
     bootloader_ignore_signals=False,

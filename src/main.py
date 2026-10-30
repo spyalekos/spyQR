@@ -4,6 +4,7 @@ import csv
 import io
 import json
 import os
+import subprocess
 import sys
 import threading
 import time
@@ -82,15 +83,18 @@ def main(page: ft.Page):
     # ---------------------------------------------------------
     # 1. MOUNTING SERVICES (Definitive Standard: page.services)
     # ---------------------------------------------------------
-    audio_player = fa.Audio(
-        src=beep_wav_path if os.path.exists(beep_wav_path) else "assets/beep.wav",
-        autoplay=False,
-    )
+    audio_player = None
+    if is_android:
+        audio_player = fa.Audio(
+            src=beep_wav_path if os.path.exists(beep_wav_path) else "assets/beep.wav",
+            autoplay=False,
+        )
+        page.services.append(audio_player)
+
     secure_storage = fss.SecureStorage()
     clipboard_service = ft.Clipboard()
     url_launcher = ft.UrlLauncher()
 
-    page.services.append(audio_player)
     page.services.append(secure_storage)
     page.services.append(clipboard_service)
     page.services.append(url_launcher)
@@ -131,11 +135,62 @@ def main(page: ft.Page):
     }
 
     def play_beep():
-        if sound_enabled and audio_player:
+        if not sound_enabled:
+            return
+
+        # 1. Android: use flet-audio plugin safely (wrapped to prevent unhandled TimeoutException/RuntimeError)
+        if is_android:
+            if audio_player:
+                async def _play_android():
+                    try:
+                        await audio_player.play()
+                    except Exception:
+                        pass
+                try:
+                    page.run_task(_play_android)
+                except Exception:
+                    pass
+            return
+
+        # 2. Windows: native winsound
+        if sys.platform.startswith("win"):
             try:
-                page.run_task(audio_player.play)
-            except Exception as e:
-                print(f"[Audio] Play error: {e}")
+                import winsound
+                target_wav = beep_wav_path if os.path.exists(beep_wav_path) else "assets/beep.wav"
+                if os.path.exists(target_wav):
+                    winsound.PlaySound(target_wav, winsound.SND_FILENAME | winsound.SND_ASYNC)
+                else:
+                    winsound.Beep(1200, 150)
+            except Exception:
+                pass
+            return
+
+        # 3. Linux Desktop: native Linux audio players (paplay, aplay, pw-play)
+        if sys.platform.startswith("linux"):
+            target_wav = beep_wav_path if os.path.exists(beep_wav_path) else "assets/beep.wav"
+            if not os.path.exists(target_wav):
+                alt_wav = os.path.join(get_assets_path(), "beep.wav")
+                if os.path.exists(alt_wav):
+                    target_wav = alt_wav
+            if os.path.exists(target_wav):
+                for player in (["paplay", target_wav], ["aplay", "-q", target_wav], ["pw-play", target_wav]):
+                    try:
+                        subprocess.Popen(
+                            player,
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                            start_new_session=True,
+                        )
+                        return
+                    except FileNotFoundError:
+                        continue
+                    except Exception:
+                        pass
+            try:
+                sys.stdout.write("\a")
+                sys.stdout.flush()
+            except Exception:
+                pass
 
     # ---------------------------------------------------------
     # 3. CAMERA & SCANNER ENGINE
@@ -174,7 +229,7 @@ def main(page: ft.Page):
     camera_placeholder = ft.Container(
         content=ft.Column(
             [
-                ft.ProgressRing(color=ft.Colors.BLUE_400, width=50, height=50),
+                ft.Icon(ft.Icons.QR_CODE_SCANNER_ROUNDED, color=ft.Colors.BLUE_400, size=52),
                 ft.Container(height=10),
                 placeholder_status_text,
                 placeholder_sub_text,
@@ -555,6 +610,32 @@ def main(page: ft.Page):
             tabs.selected_index = 1
             page.update()
 
+    def search_google_from_result(target_val: Optional[str] = None):
+        """1-click Google search for the scanned code or current result."""
+        raw_val = (target_val if target_val is not None else (current_result.get("raw") or "")).strip()
+        if not raw_val and result_raw_text.value:
+            raw_val = (result_raw_text.value or "").strip()
+        if not raw_val:
+            page.show_dialog(
+                ft.SnackBar(
+                    content=ft.Text("Δεν υπάρχει κωδικός για αναζήτηση στο Google."),
+                    bgcolor=ft.Colors.AMBER_800,
+                    duration=2000,
+                )
+            )
+            return
+
+        title = current_result.get("title") or ""
+        q_type = current_result.get("type", "TEXT")
+        if q_type == "PRODUCT" and title and title != "Προϊόν Λιανικής":
+            query = f"{raw_val} {title}"
+        elif q_type == "BOOK":
+            query = f"ISBN {raw_val}"
+        else:
+            query = raw_val
+
+        open_external_url(f"https://www.google.com/search?q={urllib.parse.quote(query)}")
+
     scanner_options_panel = ft.Container(
         content=ft.Column(
             [
@@ -594,6 +675,13 @@ def main(page: ft.Page):
                                         on_click=lambda _: setattr(tabs, "selected_index", 1) or page.update(),
                                         bgcolor=ft.Colors.BLUE_700,
                                         color=ft.Colors.WHITE,
+                                    ),
+                                    ft.Button(
+                                        content=ft.Row([ft.Icon(ft.Icons.SEARCH, size=15), ft.Text("Google", size=13 if is_android else 14)], tight=True),
+                                        on_click=lambda _: search_google_from_result(),
+                                        bgcolor="#1e293b",
+                                        color=ft.Colors.WHITE,
+                                        tooltip="Αναζήτηση του τελευταίου κωδικού στο Google με 1 κλικ",
                                     ),
                                     ft.IconButton(
                                         icon=ft.Icons.BOLT,
@@ -773,11 +861,19 @@ def main(page: ft.Page):
         bgcolor="#1e293b",
         color=ft.Colors.WHITE,
     )
-    open_browser_btn = ft.Button(
-        content=ft.Row([ft.Icon(ft.Icons.OPEN_IN_BROWSER), ft.Text("Άνοιγμα / Αναζήτηση Google")], tight=True),
-        on_click=open_browser_click,
-        bgcolor=ft.Colors.BLUE_700,
+    google_search_btn = ft.Button(
+        content=ft.Row([ft.Icon(ft.Icons.SEARCH), ft.Text("Αναζήτηση Google")], tight=True),
+        on_click=lambda _: search_google_from_result(),
+        bgcolor=ft.Colors.BLUE_800,
         color=ft.Colors.WHITE,
+        tooltip="Άμεση αναζήτηση στο Google με ένα κλικ",
+    )
+    open_browser_btn = ft.Button(
+        content=ft.Row([ft.Icon(ft.Icons.OPEN_IN_BROWSER), ft.Text("Άνοιγμα Συνδέσμου")], tight=True),
+        on_click=open_browser_click,
+        bgcolor="#1e293b",
+        color=ft.Colors.WHITE,
+        tooltip="Άνοιγμα της σελίδας / συνδέσμου στον περιηγητή",
     )
     skroutz_btn = ft.Button(
         content=ft.Row([ft.Icon(ft.Icons.SHOPPING_CART), ft.Text("Αναζήτηση στο Skroutz")], tight=True),
@@ -842,7 +938,7 @@ def main(page: ft.Page):
                     border_radius=8,
                     border=ft.Border.all(1, "#1f2937"),
                 ),
-                ft.Row([copy_btn, open_browser_btn, skroutz_btn, off_btn], spacing=10, wrap=True),
+                ft.Row([copy_btn, google_search_btn, open_browser_btn, skroutz_btn, off_btn], spacing=10, wrap=True),
                 ft.Divider(height=10, color="#1e293b"),
                 ft.Text("Επεξεργαστής Κώδικα & Δομημένων Δεδομένων:", size=14, weight=ft.FontWeight.W_600),
                 ft.Container(
@@ -1614,6 +1710,11 @@ def main(page: ft.Page):
                     refresh_analytics_tab()
                 return handler
 
+            def make_google_search_handler(target_raw):
+                def handler(e):
+                    search_google_from_result(target_raw)
+                return handler
+
             rows.append(
                 fdt.DataRow2(
                     cells=[
@@ -1635,6 +1736,13 @@ def main(page: ft.Page):
                                         icon_size=18,
                                         tooltip="Προβολή",
                                         on_click=make_view_handler(item),
+                                    ),
+                                    ft.IconButton(
+                                        icon=ft.Icons.SEARCH,
+                                        icon_size=18,
+                                        icon_color=ft.Colors.BLUE_400,
+                                        tooltip="Αναζήτηση στο Google με 1 κλικ",
+                                        on_click=make_google_search_handler(raw),
                                     ),
                                     ft.IconButton(
                                         icon=ft.Icons.COPY,

@@ -249,6 +249,7 @@ import java.util.EnumMap
 
 class MainActivity : FlutterActivity() {
     private var lastBackTime: Long = 0
+    private var isScanningActive: Boolean = false
 
     override fun onBackPressed() {
         val currentTime = System.currentTimeMillis()
@@ -266,16 +267,32 @@ class MainActivity : FlutterActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        handleScanIntent(intent)
+        val uri: Uri? = intent?.data
+        if (savedInstanceState == null) {
+            // First launch / cold start: automatically open camera scanner directly!
+            if (uri == null || (uri.scheme == "spyqr" && uri.host == "scan" && (uri.path == "/start" || uri.path.isNullOrEmpty()))) {
+                launchScanner()
+            } else if (uri.scheme == "spyqr" && uri.host == "scan") {
+                handleScanIntent(intent)
+            }
+        } else {
+            handleScanIntent(intent)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        // If re-opened from home screen launcher, directly enter camera scanner!
+        if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_LAUNCHER)) {
+            launchScanner()
+            return
+        }
         handleScanIntent(intent)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        isScanningActive = false
         val result: IntentResult? = IntentIntegrator.parseActivityResult(requestCode, resultCode, data)
         if (result != null) {
             val contents = result.contents
@@ -309,6 +326,8 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun launchScanner() {
+        if (isScanningActive) return
+        isScanningActive = true
         val integrator = IntentIntegrator(this)
         integrator.setDesiredBarcodeFormats(IntentIntegrator.ALL_CODE_TYPES)
         integrator.setPrompt("Σαρώστε κωδικό QR ή Barcode (1D/2D)")
