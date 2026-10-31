@@ -1,6 +1,6 @@
 """Version and application metadata for SpyQR."""
 
-__version__ = "0.3.3"
+__version__ = "0.3.4"
 APP_NAME = "SpyQR"
 APP_DESCRIPTION = "Έξυπνος Σαρωτής & Δημιουργός QR Codes και Barcodes (1D/2D)"
 

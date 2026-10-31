@@ -619,6 +619,9 @@ class CameraScanner:
         self._barcode_detector = (
             cv2.barcode.BarcodeDetector() if (HAS_CV2 and hasattr(cv2, "barcode")) else None
         )
+        self._clahe = (
+            cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8)) if HAS_CV2 else None
+        )
         self._last_detected_text = ""
         self._last_scan_time = 0.0
         self.paused = False
@@ -626,32 +629,97 @@ class CameraScanner:
     def is_running(self) -> bool:
         return self._running
 
+    @staticmethod
+    def _extract_zxing_result(
+        results: Any,
+        offset_x: int = 0,
+        offset_y: int = 0,
+        scale_x: float = 1.0,
+        scale_y: float = 1.0,
+    ) -> Optional[Tuple[str, str, Any]]:
+        if not results:
+            return None
+        for r in results:
+            text = (getattr(r, "text", "") or "").strip()
+            if text:
+                fmt_name = r.format.name if hasattr(r, "format") else "BARCODE"
+                pos = r.position
+                pts = np.array(
+                    [
+                        [int(pos.top_left.x / scale_x) + offset_x, int(pos.top_left.y / scale_y) + offset_y],
+                        [int(pos.top_right.x / scale_x) + offset_x, int(pos.top_right.y / scale_y) + offset_y],
+                        [int(pos.bottom_right.x / scale_x) + offset_x, int(pos.bottom_right.y / scale_y) + offset_y],
+                        [int(pos.bottom_left.x / scale_x) + offset_x, int(pos.bottom_left.y / scale_y) + offset_y],
+                    ],
+                    dtype=np.int32,
+                )
+                return text, fmt_name, pts
+        return None
+
     def _detect_any_code(
         self, frame: Any
     ) -> Tuple[Optional[str], str, Optional[Any]]:
-        """Detects QR codes and all 1D/2D Barcodes using ZXing-CPP with OpenCV fallback."""
-        if not HAS_CV2:
+        """Detects QR codes and all 1D/2D Barcodes using multi-pass ZXing-CPP (with ROI enhancement) and OpenCV fallback."""
+        if not HAS_CV2 or frame is None:
             return None, "", None
 
         if HAS_ZXING:
             try:
-                results = zxingcpp.read_barcodes(frame)
-                if results:
-                    r = results[0]
-                    text = (r.text or "").strip()
-                    if text:
-                        fmt_name = r.format.name if hasattr(r, "format") else "BARCODE"
-                        pos = r.position
-                        pts = np.array(
-                            [
-                                [pos.top_left.x, pos.top_left.y],
-                                [pos.top_right.x, pos.top_right.y],
-                                [pos.bottom_right.x, pos.bottom_right.y],
-                                [pos.bottom_left.x, pos.bottom_left.y],
-                            ],
-                            dtype=np.int32,
+                # Pass 1: Fast full-frame scan (LocalAverage binarizer)
+                res = self._extract_zxing_result(
+                    zxingcpp.read_barcodes(frame, try_rotate=True, try_downscale=True, try_invert=True)
+                )
+                if res:
+                    return res
+
+                # Pass 2: Full-frame scan with GlobalHistogram binarizer (ideal for 1D barcodes under uneven lighting)
+                res = self._extract_zxing_result(
+                    zxingcpp.read_barcodes(
+                        frame,
+                        binarizer=zxingcpp.Binarizer.GlobalHistogram,
+                        try_rotate=True,
+                        try_downscale=False,
+                        try_invert=True,
+                    )
+                )
+                if res:
+                    return res
+
+                # Pass 3: Enhanced & upscaled center ROI (or full image if small) for thin/dense 1D product barcodes
+                h, w = frame.shape[:2]
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) if len(frame.shape) == 3 else frame
+                if w >= 600 and h >= 400:
+                    x0, x1 = int(w * 0.20), int(w * 0.80)
+                    y0, y1 = int(h * 0.20), int(h * 0.80)
+                    roi = gray[y0:y1, x0:x1]
+                else:
+                    x0, y0 = 0, 0
+                    roi = gray
+
+                if roi.size > 0:
+                    fx, fy = (2.0, 2.0)
+                    roi_up = cv2.resize(roi, None, fx=fx, fy=fy, interpolation=cv2.INTER_CUBIC)
+                    if self._clahe is not None:
+                        roi_up = self._clahe.apply(roi_up)
+                    blur = cv2.GaussianBlur(roi_up, (0, 0), 1.4)
+                    sharp = cv2.addWeighted(roi_up, 1.85, blur, -0.85, 0)
+
+                    for bin_mode in (zxingcpp.Binarizer.LocalAverage, zxingcpp.Binarizer.GlobalHistogram):
+                        res = self._extract_zxing_result(
+                            zxingcpp.read_barcodes(
+                                sharp,
+                                binarizer=bin_mode,
+                                try_rotate=True,
+                                try_downscale=True,
+                                try_invert=True,
+                            ),
+                            offset_x=x0,
+                            offset_y=y0,
+                            scale_x=fx,
+                            scale_y=fy,
                         )
-                        return text, fmt_name, pts
+                        if res:
+                            return res
             except Exception as e:
                 print(f"[CameraScanner] ZXing detection error: {e}")
 
@@ -692,8 +760,16 @@ class CameraScanner:
             print(f"[CameraScanner] Failed to open camera index {camera_index}")
             return False
 
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        try:
+            cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+        except Exception:
+            pass
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        try:
+            cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
+        except Exception:
+            pass
 
         self._cap = cap
         self._running = True
@@ -725,7 +801,7 @@ class CameraScanner:
                             f"{fmt_name}: {val[:24]}",
                             (lx, ly),
                             cv2.FONT_HERSHEY_SIMPLEX,
-                            0.55,
+                            0.65,
                             (0, 255, 128),
                             2,
                         )
@@ -741,7 +817,7 @@ class CameraScanner:
 
         h, w = frame.shape[:2]
         cx, cy = w // 2, h // 2
-        box_w, box_h = 180, 140
+        box_w, box_h = int(w * 0.30), int(h * 0.29)
         cv2.rectangle(
             frame,
             (cx - box_w, cy - box_h),
@@ -751,7 +827,7 @@ class CameraScanner:
         )
         cv2.line(frame, (cx - box_w + 15, cy), (cx + box_w - 15, cy), (0, 120, 255), 1)
 
-        bracket_len = 22
+        bracket_len = max(22, int(min(w, h) * 0.045))
         color = (0, 255, 128) if (time.time() - self._last_scan_time < 0.8) else (0, 200, 255)
         cv2.line(frame, (cx - box_w, cy - box_h), (cx - box_w + bracket_len, cy - box_h), color, 3)
         cv2.line(frame, (cx - box_w, cy - box_h), (cx - box_w, cy - box_h + bracket_len), color, 3)
@@ -762,7 +838,8 @@ class CameraScanner:
         cv2.line(frame, (cx + box_w, cy + box_h), (cx + box_w - bracket_len, cy + box_h), color, 3)
         cv2.line(frame, (cx + box_w, cy + box_h), (cx + box_w, cy + box_h - bracket_len), color, 3)
 
-        _, buffer = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
+        display_frame = cv2.resize(frame, (640, int(h * 640 / w)), interpolation=cv2.INTER_AREA) if w > 640 else frame
+        _, buffer = cv2.imencode(".jpg", display_frame, [cv2.IMWRITE_JPEG_QUALITY, 78])
         return buffer.tobytes(), scan_event
 
     def start(self, camera_index: int = 0) -> bool:

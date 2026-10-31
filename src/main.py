@@ -523,7 +523,7 @@ def main(page: ft.Page):
         success = await asyncio.to_thread(scanner_engine.open_camera, 0)
         if not success:
             placeholder_status_text.value = "Η κάμερα είναι ανενεργή"
-            placeholder_sub_text.value = "Πατήστε «Έναρξη Κάμερας» για ζωντανή σάρωση QR"
+            placeholder_sub_text.value = "Πατήστε «Έναρξη Κάμερας» για ζωντανή σάρωση QR & Barcodes (EAN, UPC, Code128)"
             camera_stack_container.content = camera_placeholder
             camera_live_ring.visible = False
             camera_live_badge.visible = False
